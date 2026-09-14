@@ -8,6 +8,7 @@ export type DailyPnl = {
 };
 
 export type CategoryOption = {
+  id: string;
   name: string;
   background: string;
   color: string;

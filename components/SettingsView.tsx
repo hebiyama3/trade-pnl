@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { DEFAULT_CATEGORIES, DEFAULT_CHART_SIGN_COLORS, DEFAULT_COLOR_RULES, DEFAULT_TAG_BACKGROUND, DEFAULT_TAG_COLOR, toColorInput } from "@/lib/colors";
-import { BACKUP_FILENAME, downloadBackup, parseBackup, type BackupPayload } from "@/lib/backup";
+import { BACKUP_FILENAME, downloadBackup, newCategoryId, parseBackup, type BackupPayload } from "@/lib/backup";
 import type { CategoryOption, ChartSignColors, ColorRule } from "@/types/trade";
 
 type Props = {
@@ -99,7 +99,7 @@ export function SettingsView({
             onClick={() =>
               onChangeCategories([
                 ...categories,
-                { name: `項目${categories.length + 1}`, background: DEFAULT_TAG_BACKGROUND, color: DEFAULT_TAG_COLOR },
+                { name: `項目${categories.length + 1}`, id: newCategoryId(), background: DEFAULT_TAG_BACKGROUND, color: DEFAULT_TAG_COLOR },
               ])
             }
             className="rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700"
@@ -107,10 +107,10 @@ export function SettingsView({
             追加
           </button>
         </div>
-        <p className="mb-3 text-sm text-slate-500">項目タグの背景色と文字色を指定できます。</p>
+        <p className="mb-3 text-sm text-slate-500">項目タグの背景色と文字色を指定できます。名前を変えても、既存データは同じ項目のまま新しい表記で表示されます。</p>
         <div className="space-y-2">
           {categories.map((item, index) => (
-            <div key={`${item.name}-${index}`} className="flex flex-wrap items-center gap-2">
+            <div key={item.id} className="flex flex-wrap items-center gap-2">
               <input
                 value={item.name}
                 onChange={(event) => updateCategory(index, { name: event.target.value })}

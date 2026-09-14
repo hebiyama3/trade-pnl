@@ -11,9 +11,9 @@ export const DEFAULT_CHART_SIGN_COLORS: ChartSignColors = {
 };
 
 export const DEFAULT_CATEGORIES: CategoryOption[] = [
-  { name: "1h", background: "#FFE082", color: DEFAULT_TAG_COLOR },
-  { name: "5m", background: "#C5E1A5", color: DEFAULT_TAG_COLOR },
-  { name: "NG", background: DEFAULT_TAG_BACKGROUND, color: DEFAULT_TAG_COLOR },
+  { id: "1h", name: "1h", background: "#FFE082", color: DEFAULT_TAG_COLOR },
+  { id: "5m", name: "5m", background: "#C5E1A5", color: DEFAULT_TAG_COLOR },
+  { id: "NG", name: "NG", background: DEFAULT_TAG_BACKGROUND, color: DEFAULT_TAG_COLOR },
 ];
 
 export const DEFAULT_COLOR_RULES: ColorRule[] = [
@@ -106,8 +106,16 @@ export function pnlStyle(value: number | null | undefined, rules: ColorRule[]): 
   return { backgroundColor: rule.background, color: rule.color };
 }
 
-export function categoryStyle(name: string, categories: CategoryOption[]): CSSProperties {
-  const found = categories.find((item) => item.name === name);
-  if (!name || !found) return { color: "#334155" };
+export function findCategory(key: string, categories: CategoryOption[]): CategoryOption | undefined {
+  return categories.find((item) => item.id === key) ?? categories.find((item) => item.name === key);
+}
+
+export function categoryLabel(key: string, categories: CategoryOption[]): string {
+  return findCategory(key, categories)?.name || key;
+}
+
+export function categoryStyle(key: string, categories: CategoryOption[]): CSSProperties {
+  const found = findCategory(key, categories);
+  if (!key || !found) return { color: "#334155" };
   return { backgroundColor: found.background, color: found.color || DEFAULT_TAG_COLOR };
 }

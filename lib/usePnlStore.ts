@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { DEFAULT_CATEGORIES, DEFAULT_CHART_SIGN_COLORS, DEFAULT_COLOR_RULES } from "@/lib/colors";
 import {
+  bindRecordCategories,
   migrateCategoryName,
   normalizeCategories,
   normalizeChartSignColors,
@@ -101,8 +102,8 @@ export function usePnlStore() {
 
   useEffect(() => {
     try {
-      setRecords(readRecords());
       const settings = readSettings();
+      setRecords(bindRecordCategories(readRecords(), settings.categories));
       setCategories(settings.categories);
       setColorRules(settings.colorRules);
       setBaseCarryover(settings.baseCarryover);
@@ -160,8 +161,9 @@ export function usePnlStore() {
   }, []);
 
   const applyBackup = useCallback((payload: BackupPayload) => {
-    setRecords(payload.records);
-    setCategories(payload.settings.categories.length ? payload.settings.categories : DEFAULT_CATEGORIES);
+    const categories = payload.settings.categories.length ? payload.settings.categories : DEFAULT_CATEGORIES;
+    setRecords(bindRecordCategories(payload.records, categories));
+    setCategories(categories);
     setColorRules(payload.settings.colorRules.length ? payload.settings.colorRules : DEFAULT_COLOR_RULES);
     setBaseCarryover(payload.settings.baseCarryover);
     setMonthCarryovers(payload.settings.monthCarryovers);

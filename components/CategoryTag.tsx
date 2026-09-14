@@ -1,13 +1,13 @@
 "use client";
 
-import { categoryStyle } from "@/lib/colors";
+import { categoryLabel, categoryStyle } from "@/lib/colors";
 import type { CategoryOption } from "@/types/trade";
 
 export function CategoryTag({ name, categories }: { name: string; categories: CategoryOption[] }) {
   if (!name) return null;
   return (
     <span className="inline-block rounded px-1.5 py-0.5 text-xs" style={categoryStyle(name, categories)}>
-      {name}
+      {categoryLabel(name, categories)}
     </span>
   );
 }

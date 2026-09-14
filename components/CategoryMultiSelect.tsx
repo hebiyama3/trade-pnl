@@ -23,8 +23,8 @@ export function CategoryMultiSelect({ options, value, onChange }: Props) {
     return () => window.removeEventListener("mousedown", onPointer);
   }, []);
 
-  const toggle = (name: string) => {
-    onChange(value.includes(name) ? value.filter((item) => item !== name) : [...value, name]);
+  const toggle = (id: string) => {
+    onChange(value.includes(id) ? value.filter((item) => item !== id) : [...value, id]);
   };
 
   return (
@@ -40,8 +40,8 @@ export function CategoryMultiSelect({ options, value, onChange }: Props) {
       {open ? (
         <div className="absolute z-30 mt-1 w-full rounded-md border border-slate-200 bg-white p-2 shadow-lg">
           {options.map((item) => (
-            <label key={item.name} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50">
-              <input type="checkbox" checked={value.includes(item.name)} onChange={() => toggle(item.name)} />
+            <label key={item.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50">
+              <input type="checkbox" checked={value.includes(item.id)} onChange={() => toggle(item.id)} />
               <span className="rounded px-1.5 py-0.5 text-xs" style={{ backgroundColor: item.background, color: item.color }}>
                 {item.name}
               </span>
