@@ -17,6 +17,7 @@ import {
   toDateKey,
 } from "@/lib/pnl";
 import { usePnlStore } from "@/lib/usePnlStore";
+import { buildBackup } from "@/lib/backup";
 import type { ViewMode } from "@/types/trade";
 
 const TABS: { id: ViewMode; label: string; icon: typeof List }[] = [
@@ -109,7 +110,7 @@ export function Dashboard() {
           onSelectDate={selectDate}
         />
       ) : view === "chart" ? (
-        <ChartView records={store.records} year={year} month={month} />
+        <ChartView records={store.records} year={year} month={month} chartSignColors={store.chartSignColors} />
       ) : view === "calendar" ? (
         <CalendarView
           title={monthTitle(year, month)}
@@ -134,13 +135,28 @@ export function Dashboard() {
         />
       ) : (
         <SettingsView
+          recordsCount={store.records.length}
           categories={store.categories}
           colorRules={store.colorRules}
           baseCarryover={store.baseCarryover}
+          monthCarryovers={store.monthCarryovers}
+          chartSignColors={store.chartSignColors}
           onChangeCategories={store.setCategories}
           onChangeRules={store.setColorRules}
           onChangeBaseCarryover={store.setBaseCarryover}
+          onChangeChartSignColors={store.setChartSignColors}
           onResetSample={store.resetSample}
+          onExportBackup={() =>
+            buildBackup({
+              records: store.records,
+              categories: store.categories,
+              colorRules: store.colorRules,
+              baseCarryover: store.baseCarryover,
+              monthCarryovers: store.monthCarryovers,
+              chartSignColors: store.chartSignColors,
+            })
+          }
+          onImportBackup={store.applyBackup}
         />
       )}
     </main>

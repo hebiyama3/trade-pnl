@@ -1,97 +1,91 @@
 import type { CSSProperties } from "react";
-import type { CategoryOption, ColorRule } from "@/types/trade";
+import type { CategoryOption, ChartSignColors, ColorRule } from "@/types/trade";
 
-export const COLOR = {
-  posLightBg: "#E6F3FF",
-  posLightFg: "#1D4ED8",
-  posMidBg: "#5B9BD5",
-  posMidFg: "#0B3A66",
-  posVividBg: "#2F80ED",
-  posVividFg: "#FFFFFF",
-  posDarkBg: "#1E3A8A",
-  posDarkFg: "#FFFFFF",
-  negLightBg: "#FFE6EE",
-  negLightFg: "#BE123C",
-  negMidBg: "#F48FB1",
-  negMidFg: "#831843",
-  negDarkBg: "#DB2777",
-  negDarkFg: "#FFFFFF",
-  negVividBg: "#E11D48",
-  negVividFg: "#FFFFFF",
-} as const;
+export const DEFAULT_TAG_COLOR = "#000000";
+export const DEFAULT_TAG_BACKGROUND = "#e5e7eb";
+export const CHART_BAR_DEFAULT = "#fbc02d";
+
+export const DEFAULT_CHART_SIGN_COLORS: ChartSignColors = {
+  positive: "#a2dafd",
+  negative: "#fdc1de",
+};
 
 export const DEFAULT_CATEGORIES: CategoryOption[] = [
-  { name: "1h", background: "#FFE082" },
-  { name: "5m", background: "#C5E1A5" },
-  { name: "DJI", background: "#90CAF9" },
+  { name: "1h", background: "#FFE082", color: DEFAULT_TAG_COLOR },
+  { name: "5m", background: "#C5E1A5", color: DEFAULT_TAG_COLOR },
+  { name: "NG", background: DEFAULT_TAG_BACKGROUND, color: DEFAULT_TAG_COLOR },
 ];
 
 export const DEFAULT_COLOR_RULES: ColorRule[] = [
   {
     id: "pos-light",
-    label: "プラス 1 〜 9,999",
+    label: "1 〜 9,999",
     min: 1,
     max: 9999,
-    background: COLOR.posLightBg,
-    color: COLOR.posLightFg,
+    background: "#cee9fb",
+    color: "#323232",
   },
   {
     id: "pos-mid",
-    label: "プラス 10,000 〜 29,999",
+    label: "10,000 〜 29,999",
     min: 10000,
     max: 29999,
-    background: COLOR.posMidBg,
-    color: COLOR.posMidFg,
+    background: "#a2dafd",
+    color: "#323232",
   },
   {
     id: "pos-vivid",
-    label: "プラス 30,000 〜 99,999",
+    label: "30,000 〜 99,999",
     min: 30000,
     max: 99999,
-    background: COLOR.posVividBg,
-    color: COLOR.posVividFg,
+    background: "#6fc6fe",
+    color: "#323232",
   },
   {
     id: "pos-dark",
-    label: "プラス 100,000 以上",
+    label: "100,000 以上",
     min: 100000,
     max: null,
-    background: COLOR.posDarkBg,
-    color: COLOR.posDarkFg,
+    background: "#32abfe",
+    color: "#323232",
   },
   {
     id: "neg-light",
-    label: "マイナス -1 〜 -5,000",
-    min: -5000,
+    label: "-1 〜 -4,999",
+    min: -4999,
     max: -1,
-    background: COLOR.negLightBg,
-    color: COLOR.negLightFg,
+    background: "#fbddef",
+    color: "#323232",
   },
   {
     id: "neg-mid",
-    label: "マイナス -5,001 〜 -9,999",
-    min: -9999,
-    max: -5001,
-    background: COLOR.negMidBg,
-    color: COLOR.negMidFg,
+    label: "-5,000 〜 -19,999",
+    min: -19999,
+    max: -5000,
+    background: "#fdc1df",
+    color: "#323232",
   },
   {
     id: "neg-dark",
-    label: "マイナス -10,000 〜 -19,999",
-    min: -19999,
-    max: -10000,
-    background: COLOR.negDarkBg,
-    color: COLOR.negDarkFg,
+    label: "-20,000 〜 -29,999",
+    min: -29999,
+    max: -20000,
+    background: "#fea0ce",
+    color: "#323232",
   },
   {
     id: "neg-vivid",
-    label: "マイナス -20,000 以下",
+    label: "-30,000 以下",
     min: null,
-    max: -20000,
-    background: COLOR.negVividBg,
-    color: COLOR.negVividFg,
+    max: -30000,
+    background: "#ef75b0",
+    color: "#323232",
   },
 ];
+
+export function toColorInput(value: string | undefined, fallback: string): string {
+  return value && /^#[0-9A-Fa-f]{6}$/.test(value) ? value : fallback;
+}
 
 export function matchColorRule(value: number, rules: ColorRule[]): ColorRule | null {
   return (
@@ -112,15 +106,8 @@ export function pnlStyle(value: number | null | undefined, rules: ColorRule[]): 
   return { backgroundColor: rule.background, color: rule.color };
 }
 
-export function chartPalette(rules: ColorRule[]) {
-  return {
-    barPos: matchColorRule(15000, rules)?.background ?? COLOR.posMidBg,
-    barNeg: matchColorRule(-7000, rules)?.background ?? COLOR.negMidBg,
-  };
-}
-
 export function categoryStyle(name: string, categories: CategoryOption[]): CSSProperties {
   const found = categories.find((item) => item.name === name);
   if (!name || !found) return { color: "#334155" };
-  return { backgroundColor: found.background, color: "#000000" };
+  return { backgroundColor: found.background, color: found.color || DEFAULT_TAG_COLOR };
 }

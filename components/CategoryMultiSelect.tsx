@@ -42,7 +42,7 @@ export function CategoryMultiSelect({ options, value, onChange }: Props) {
           {options.map((item) => (
             <label key={item.name} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50">
               <input type="checkbox" checked={value.includes(item.name)} onChange={() => toggle(item.name)} />
-              <span className="rounded px-1.5 py-0.5 text-xs" style={{ backgroundColor: item.background, color: "#000000" }}>
+              <span className="rounded px-1.5 py-0.5 text-xs" style={{ backgroundColor: item.background, color: item.color }}>
                 {item.name}
               </span>
             </label>

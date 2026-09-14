@@ -1,16 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { DEFAULT_CATEGORIES, DEFAULT_COLOR_RULES } from "@/lib/colors";
-import { LEGACY_STORAGE_KEYS, STORAGE_RECORDS, STORAGE_SEED, STORAGE_SETTINGS, normalizeCategoryList } from "@/lib/pnl";
+import { DEFAULT_CATEGORIES, DEFAULT_CHART_SIGN_COLORS, DEFAULT_COLOR_RULES } from "@/lib/colors";
+import {
+  migrateCategoryName,
+  normalizeCategories,
+  normalizeChartSignColors,
+  normalizeColorRules,
+  normalizeMonthCarryovers,
+  type BackupPayload,
+} from "@/lib/backup";
+import { LEGACY_SETTINGS_KEYS, LEGACY_STORAGE_KEYS, STORAGE_RECORDS, STORAGE_SEED, STORAGE_SETTINGS, normalizeCategoryList } from "@/lib/pnl";
 import { SAMPLE_RECORDS } from "@/lib/sample";
-import type { CategoryOption, ColorRule, DailyPnl } from "@/types/trade";
+import type { CategoryOption, ChartSignColors, ColorRule, DailyPnl } from "@/types/trade";
 
-type Settings = {
+export type StoredSettings = {
   categories: CategoryOption[];
   colorRules: ColorRule[];
   baseCarryover: number;
   monthCarryovers: Record<string, number>;
+  chartSignColors: ChartSignColors;
 };
 
 function normalizeRecord(value: unknown): DailyPnl | null {
@@ -24,26 +33,8 @@ function normalizeRecord(value: unknown): DailyPnl | null {
     categories: normalizeCategoryList(
       (record as { categories?: unknown; category?: unknown }).categories ??
         (record as { category?: unknown }).category,
-    ),
+    ).map(migrateCategoryName),
   };
-}
-
-function normalizeCategories(value: unknown): CategoryOption[] {
-  if (!Array.isArray(value) || value.length === 0) return DEFAULT_CATEGORIES;
-  const next: CategoryOption[] = [];
-  for (const item of value) {
-    if (typeof item === "string" && item.trim()) {
-      const fallback = DEFAULT_CATEGORIES.find((category) => category.name === item);
-      next.push({ name: item, background: fallback?.background ?? "#E2E8F0" });
-    } else if (item && typeof item === "object" && "name" in item && typeof (item as CategoryOption).name === "string") {
-      const category = item as CategoryOption;
-      next.push({
-        name: category.name,
-        background: typeof category.background === "string" ? category.background : "#E2E8F0",
-      });
-    }
-  }
-  return next.length ? next : DEFAULT_CATEGORIES;
 }
 
 function applySeptemberSeed(records: DailyPnl[]): DailyPnl[] {
@@ -75,20 +66,27 @@ function readRecords(): DailyPnl[] {
   return records;
 }
 
-function readSettings(): Settings {
+function readSettings(): StoredSettings {
   const current = window.localStorage.getItem(STORAGE_SETTINGS);
-  const legacy =
-    current ?? window.localStorage.getItem("trade-pnl.settings.v4") ?? window.localStorage.getItem("trade-pnl.settings.v3");
-  if (!legacy) {
-    return { categories: DEFAULT_CATEGORIES, colorRules: DEFAULT_COLOR_RULES, baseCarryover: 0, monthCarryovers: {} };
+  const raw = current ?? LEGACY_SETTINGS_KEYS.map((key) => window.localStorage.getItem(key)).find(Boolean) ?? null;
+  if (!raw) {
+    return {
+      categories: DEFAULT_CATEGORIES,
+      colorRules: DEFAULT_COLOR_RULES,
+      baseCarryover: 0,
+      monthCarryovers: {},
+      chartSignColors: { ...DEFAULT_CHART_SIGN_COLORS },
+    };
   }
-  const parsed = JSON.parse(legacy) as Partial<Settings>;
+  const parsed = JSON.parse(raw) as Partial<StoredSettings>;
+  const categories = normalizeCategories(parsed.categories);
+  const colorRules = normalizeColorRules(parsed.colorRules);
   return {
-    categories: normalizeCategories(parsed.categories),
-    colorRules: Array.isArray(parsed.colorRules) && parsed.colorRules.length > 0 ? parsed.colorRules : DEFAULT_COLOR_RULES,
+    categories: categories.length ? categories : DEFAULT_CATEGORIES,
+    colorRules: colorRules.length ? colorRules : DEFAULT_COLOR_RULES,
     baseCarryover: typeof parsed.baseCarryover === "number" ? parsed.baseCarryover : 0,
-    monthCarryovers:
-      current && parsed.monthCarryovers && typeof parsed.monthCarryovers === "object" ? parsed.monthCarryovers : {},
+    monthCarryovers: normalizeMonthCarryovers(parsed.monthCarryovers),
+    chartSignColors: normalizeChartSignColors(parsed.chartSignColors),
   };
 }
 
@@ -98,6 +96,7 @@ export function usePnlStore() {
   const [colorRules, setColorRules] = useState<ColorRule[]>(DEFAULT_COLOR_RULES);
   const [baseCarryover, setBaseCarryover] = useState(0);
   const [monthCarryovers, setMonthCarryovers] = useState<Record<string, number>>({});
+  const [chartSignColors, setChartSignColors] = useState<ChartSignColors>(DEFAULT_CHART_SIGN_COLORS);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -108,10 +107,12 @@ export function usePnlStore() {
       setColorRules(settings.colorRules);
       setBaseCarryover(settings.baseCarryover);
       setMonthCarryovers(settings.monthCarryovers);
+      setChartSignColors(settings.chartSignColors);
     } catch {
       setRecords(SAMPLE_RECORDS);
       setCategories(DEFAULT_CATEGORIES);
       setColorRules(DEFAULT_COLOR_RULES);
+      setChartSignColors({ ...DEFAULT_CHART_SIGN_COLORS });
     } finally {
       setHydrated(true);
     }
@@ -122,9 +123,9 @@ export function usePnlStore() {
     window.localStorage.setItem(STORAGE_RECORDS, JSON.stringify(records));
     window.localStorage.setItem(
       STORAGE_SETTINGS,
-      JSON.stringify({ categories, colorRules, baseCarryover, monthCarryovers }),
+      JSON.stringify({ categories, colorRules, baseCarryover, monthCarryovers, chartSignColors }),
     );
-  }, [hydrated, records, categories, colorRules, baseCarryover, monthCarryovers]);
+  }, [hydrated, records, categories, colorRules, baseCarryover, monthCarryovers, chartSignColors]);
 
   const upsert = useCallback((nextRecord: DailyPnl) => {
     setRecords((current) => {
@@ -154,7 +155,17 @@ export function usePnlStore() {
     setColorRules(DEFAULT_COLOR_RULES);
     setBaseCarryover(0);
     setMonthCarryovers({});
+    setChartSignColors({ ...DEFAULT_CHART_SIGN_COLORS });
     window.localStorage.setItem(STORAGE_SEED, "1");
+  }, []);
+
+  const applyBackup = useCallback((payload: BackupPayload) => {
+    setRecords(payload.records);
+    setCategories(payload.settings.categories.length ? payload.settings.categories : DEFAULT_CATEGORIES);
+    setColorRules(payload.settings.colorRules.length ? payload.settings.colorRules : DEFAULT_COLOR_RULES);
+    setBaseCarryover(payload.settings.baseCarryover);
+    setMonthCarryovers(payload.settings.monthCarryovers);
+    setChartSignColors(payload.settings.chartSignColors);
   }, []);
 
   return {
@@ -163,6 +174,7 @@ export function usePnlStore() {
     colorRules,
     baseCarryover,
     monthCarryovers,
+    chartSignColors,
     hydrated,
     upsert,
     remove,
@@ -170,6 +182,8 @@ export function usePnlStore() {
     setColorRules,
     setBaseCarryover,
     setMonthCarryover,
+    setChartSignColors,
     resetSample,
+    applyBackup,
   };
 }

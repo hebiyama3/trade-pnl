@@ -1,27 +1,44 @@
 "use client";
 
-import { DEFAULT_CATEGORIES, DEFAULT_COLOR_RULES } from "@/lib/colors";
-import type { CategoryOption, ColorRule } from "@/types/trade";
+import { useRef, useState } from "react";
+import { DEFAULT_CATEGORIES, DEFAULT_CHART_SIGN_COLORS, DEFAULT_COLOR_RULES, DEFAULT_TAG_BACKGROUND, DEFAULT_TAG_COLOR, toColorInput } from "@/lib/colors";
+import { BACKUP_FILENAME, downloadBackup, parseBackup, type BackupPayload } from "@/lib/backup";
+import type { CategoryOption, ChartSignColors, ColorRule } from "@/types/trade";
 
 type Props = {
+  recordsCount: number;
   categories: CategoryOption[];
   colorRules: ColorRule[];
   baseCarryover: number;
+  monthCarryovers: Record<string, number>;
+  chartSignColors: ChartSignColors;
   onChangeCategories: (categories: CategoryOption[]) => void;
   onChangeRules: (rules: ColorRule[]) => void;
   onChangeBaseCarryover: (value: number) => void;
+  onChangeChartSignColors: (colors: ChartSignColors) => void;
   onResetSample: () => void;
+  onExportBackup: () => BackupPayload;
+  onImportBackup: (payload: BackupPayload) => void;
 };
 
 export function SettingsView({
+  recordsCount,
   categories,
   colorRules,
   baseCarryover,
+  monthCarryovers,
+  chartSignColors,
   onChangeCategories,
   onChangeRules,
   onChangeBaseCarryover,
+  onChangeChartSignColors,
   onResetSample,
+  onExportBackup,
+  onImportBackup,
 }: Props) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+
   const updateRule = (id: string, patch: Partial<ColorRule>) => {
     onChangeRules(colorRules.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)));
   };
@@ -30,6 +47,30 @@ export function SettingsView({
     const next = [...categories];
     next[index] = { ...next[index], ...patch };
     onChangeCategories(next);
+  };
+
+  const handleImport = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const parsed = parseBackup(JSON.parse(await file.text()) as unknown);
+      if (!parsed) {
+        setImportMessage("JSONの形式が正しくありません。");
+        return;
+      }
+      const ok = window.confirm(
+        `「${file.name}」で現在のデータを上書きします。\n損益 ${parsed.records.length} 件 / 項目 ${parsed.settings.categories.length} 件`,
+      );
+      if (!ok) {
+        setImportMessage("復元をキャンセルしました。");
+        return;
+      }
+      onImportBackup(parsed);
+      setImportMessage("データを復元しました。");
+    } catch {
+      setImportMessage("ファイルの読み込みに失敗しました。");
+    } finally {
+      if (fileRef.current) fileRef.current.value = "";
+    }
   };
 
   return (
@@ -55,23 +96,43 @@ export function SettingsView({
           <h2 className="text-lg font-medium text-slate-800">項目</h2>
           <button
             type="button"
-            onClick={() => onChangeCategories([...categories, { name: `項目${categories.length + 1}`, background: "#E2E8F0" }])}
+            onClick={() =>
+              onChangeCategories([
+                ...categories,
+                { name: `項目${categories.length + 1}`, background: DEFAULT_TAG_BACKGROUND, color: DEFAULT_TAG_COLOR },
+              ])
+            }
             className="rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700"
           >
             追加
           </button>
         </div>
-        <p className="mb-3 text-sm text-slate-500">項目タグの背景色を指定できます。文字色は黒固定です。</p>
+        <p className="mb-3 text-sm text-slate-500">項目タグの背景色と文字色を指定できます。</p>
         <div className="space-y-2">
           {categories.map((item, index) => (
-            <div key={`${item.name}-${index}`} className="flex items-center gap-2">
+            <div key={`${item.name}-${index}`} className="flex flex-wrap items-center gap-2">
               <input
                 value={item.name}
                 onChange={(event) => updateCategory(index, { name: event.target.value })}
-                className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm"
+                className="min-w-[8rem] flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm"
               />
-              <input type="color" value={item.background} onChange={(event) => updateCategory(index, { background: event.target.value })} />
-              <span className="rounded px-2 py-1 text-sm" style={{ backgroundColor: item.background, color: "#000000" }}>
+              <label className="flex items-center gap-1 text-xs text-slate-500">
+                背景
+                <input
+                  type="color"
+                  value={toColorInput(item.background, DEFAULT_TAG_BACKGROUND)}
+                  onChange={(event) => updateCategory(index, { background: event.target.value })}
+                />
+              </label>
+              <label className="flex items-center gap-1 text-xs text-slate-500">
+                文字
+                <input
+                  type="color"
+                  value={toColorInput(item.color, DEFAULT_TAG_COLOR)}
+                  onChange={(event) => updateCategory(index, { color: event.target.value })}
+                />
+              </label>
+              <span className="rounded px-2 py-1 text-sm" style={{ backgroundColor: item.background, color: item.color }}>
                 {item.name || "項目"}
               </span>
               <button
@@ -102,8 +163,8 @@ export function SettingsView({
                   label: "新しいルール",
                   min: 0,
                   max: 0,
-                  background: "#E6F3FF",
-                  color: "#1D4ED8",
+                  background: "#cee9fb",
+                  color: "#323232",
                 },
               ])
             }
@@ -153,10 +214,10 @@ export function SettingsView({
                     />
                   </td>
                   <td className="px-2 py-2">
-                    <input type="color" value={rule.background} onChange={(event) => updateRule(rule.id, { background: event.target.value })} />
+                    <input type="color" value={toColorInput(rule.background, "#cee9fb")} onChange={(event) => updateRule(rule.id, { background: event.target.value })} />
                   </td>
                   <td className="px-2 py-2">
-                    <input type="color" value={rule.color} onChange={(event) => updateRule(rule.id, { color: event.target.value })} />
+                    <input type="color" value={toColorInput(rule.color, "#323232")} onChange={(event) => updateRule(rule.id, { color: event.target.value })} />
                   </td>
                   <td className="px-2 py-2">
                     <span className="rounded px-2 py-1" style={{ backgroundColor: rule.background, color: rule.color }}>
@@ -176,6 +237,78 @@ export function SettingsView({
         <button type="button" onClick={() => onChangeRules(DEFAULT_COLOR_RULES)} className="mt-3 text-sm text-sky-700 hover:underline">
           配色ルールを初期値に戻す
         </button>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-2 text-lg font-medium text-slate-800">グラフ色変更</h2>
+        <p className="mb-3 text-sm text-slate-500">
+          グラフの「色変更」がオンのときのプラス／マイナス棒の色です。オフ時は <span className="font-mono">#fbc02d</span> のままです。
+        </p>
+        <div className="flex flex-wrap gap-6">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            プラス
+            <input
+              type="color"
+              value={toColorInput(chartSignColors.positive, DEFAULT_CHART_SIGN_COLORS.positive)}
+              onChange={(event) => onChangeChartSignColors({ ...chartSignColors, positive: event.target.value })}
+            />
+            <span className="rounded px-2 py-1 text-xs" style={{ backgroundColor: chartSignColors.positive, color: "#323232" }}>
+              ＋
+            </span>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            マイナス
+            <input
+              type="color"
+              value={toColorInput(chartSignColors.negative, DEFAULT_CHART_SIGN_COLORS.negative)}
+              onChange={(event) => onChangeChartSignColors({ ...chartSignColors, negative: event.target.value })}
+            />
+            <span className="rounded px-2 py-1 text-xs" style={{ backgroundColor: chartSignColors.negative, color: "#323232" }}>
+              −
+            </span>
+          </label>
+        </div>
+        <button
+          type="button"
+          onClick={() => onChangeChartSignColors({ ...DEFAULT_CHART_SIGN_COLORS })}
+          className="mt-3 text-sm text-sky-700 hover:underline"
+        >
+          グラフ色を初期値に戻す
+        </button>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-2 text-lg font-medium text-slate-800">バックアップ</h2>
+        <p className="mb-3 text-sm text-slate-500">
+          損益データと設定（項目・配色・繰越金・グラフ色）を JSON で保存・復元します。復元は現在のデータを上書きします。
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => downloadBackup(onExportBackup())}
+            className="rounded-md bg-sky-600 px-4 py-2 text-sm text-white hover:bg-sky-700"
+          >
+            データ出力（Export）
+          </button>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="rounded-md border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            データ復元（Import）
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(event) => void handleImport(event.target.files?.[0])}
+          />
+        </div>
+        <p className="mt-2 text-xs text-slate-400">
+          出力ファイル名: {BACKUP_FILENAME} ／ 現在 {recordsCount} 件、繰越修正 {Object.keys(monthCarryovers).length} 件
+        </p>
+        {importMessage ? <p className="mt-2 text-sm text-slate-600">{importMessage}</p> : null}
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

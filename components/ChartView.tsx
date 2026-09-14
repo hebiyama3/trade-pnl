@@ -13,22 +13,21 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CHART_BAR_DEFAULT } from "@/lib/colors";
 import { chartRangePoints, daysInMonth, lastDayOfMonth, pad2, toDateKey } from "@/lib/pnl";
-import type { DailyPnl } from "@/types/trade";
+import type { ChartSignColors, DailyPnl } from "@/types/trade";
 
 const AXIS_COLOR = "#4b5563";
 const LINE_COLOR = "#1c2534";
-const BAR_DEFAULT = "#fbc02d";
-const BAR_POS = "#a2dafd";
-const BAR_NEG = "#fdc1de";
 
 type Props = {
   records: DailyPnl[];
   year: number;
   month: number;
+  chartSignColors: ChartSignColors;
 };
 
-export function ChartView({ records, year, month }: Props) {
+export function ChartView({ records, year, month, chartSignColors }: Props) {
   const defaultStart = toDateKey(year, month, 1);
   const defaultEnd = lastDayOfMonth(year, month);
   const [start, setStart] = useState(defaultStart);
@@ -81,7 +80,7 @@ export function ChartView({ records, year, month }: Props) {
         <label className="inline-flex items-center gap-2">
           <input type="checkbox" checked={showDaily} onChange={(event) => setShowDaily(event.target.checked)} />
           <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: colorBySign ? BAR_POS : BAR_DEFAULT }} />
+            <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: colorBySign ? chartSignColors.positive : CHART_BAR_DEFAULT }} />
             日次損益
           </span>
         </label>
@@ -125,7 +124,7 @@ export function ChartView({ records, year, month }: Props) {
                 {data.map((entry) => (
                   <Cell
                     key={entry.date}
-                    fill={colorBySign ? (entry.daily >= 0 ? BAR_POS : BAR_NEG) : BAR_DEFAULT}
+                    fill={colorBySign ? (entry.daily >= 0 ? chartSignColors.positive : chartSignColors.negative) : CHART_BAR_DEFAULT}
                   />
                 ))}
               </Bar>

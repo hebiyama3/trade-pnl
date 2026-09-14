@@ -1,7 +1,8 @@
 import type { CalendarCell, DailyPnl, MonthBlock, MonthRow, YearColumn } from "@/types/trade";
 
 export const STORAGE_RECORDS = "trade-pnl.records.v3";
-export const STORAGE_SETTINGS = "trade-pnl.settings.v5";
+export const STORAGE_SETTINGS = "trade-pnl.settings.v6";
+export const LEGACY_SETTINGS_KEYS = ["trade-pnl.settings.v5", "trade-pnl.settings.v4", "trade-pnl.settings.v3"];
 export const STORAGE_SEED = "trade-pnl.seed.sep2026-v3";
 export const LEGACY_STORAGE_KEYS = ["trade-pnl.records.v2", "trade-pnl.records.v1"];
 

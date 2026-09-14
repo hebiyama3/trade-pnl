@@ -10,6 +10,12 @@ export type DailyPnl = {
 export type CategoryOption = {
   name: string;
   background: string;
+  color: string;
+};
+
+export type ChartSignColors = {
+  positive: string;
+  negative: string;
 };
 
 export type MonthRow = {
