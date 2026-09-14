@@ -86,7 +86,7 @@ export function Dashboard() {
         </div>
       </header>
 
-      {view !== "settings" && view !== "chart" ? (
+      {store.hydrated && view !== "settings" && view !== "chart" ? (
         <div className="mb-4">
           <PnlForm
             selectedDate={selectedDate}

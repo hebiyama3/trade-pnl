@@ -17,10 +17,6 @@ export type BackupPayload = {
   };
 };
 
-export function migrateCategoryName(name: string): string {
-  return name === "DJI" ? "NG" : name;
-}
-
 export function newCategoryId(): string {
   return `cat-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
@@ -35,17 +31,13 @@ export function normalizeCategories(value: unknown): CategoryOption[] {
     let background = DEFAULT_TAG_BACKGROUND;
     let color = DEFAULT_TAG_COLOR;
     if (typeof item === "string" && item.trim()) {
-      name = migrateCategoryName(item.trim());
+      name = item.trim();
       id = name;
     } else if (item && typeof item === "object" && "name" in item && typeof (item as CategoryOption).name === "string") {
       const category = item as CategoryOption & { id?: unknown };
-      name = migrateCategoryName(category.name.trim());
+      name = category.name.trim();
       id = typeof category.id === "string" && category.id.trim() ? category.id.trim() : name;
-      if (id === "DJI") id = "NG";
       background = toColorInput(category.background, DEFAULT_TAG_BACKGROUND);
-      if (category.name.trim() === "DJI" && typeof category.background === "string" && category.background.toLowerCase() === "#90caf9") {
-        background = DEFAULT_TAG_BACKGROUND;
-      }
       color = toColorInput(category.color, DEFAULT_TAG_COLOR);
     }
     if (!name || seen.has(id)) continue;
@@ -61,11 +53,11 @@ export function bindRecordCategories(records: DailyPnl[], categories: CategoryOp
     categories: Array.from(
       new Set(
         record.categories.map((token) => {
-          const migrated = migrateCategoryName(token);
-          const match =
-            categories.find((item) => item.id === token || item.id === migrated) ??
-            categories.find((item) => item.name === token || item.name === migrated);
-          return match?.id ?? migrated;
+          const byId = categories.find((item) => item.id === token);
+          if (byId) return byId.id;
+          const byName = categories.find((item) => item.name === token);
+          if (byName) return byName.id;
+          return token;
         }),
       ),
     ),
@@ -140,7 +132,7 @@ export function parseBackup(raw: unknown): BackupPayload | null {
         date: record.date,
         profitLoss: record.profitLoss,
         memo: typeof record.memo === "string" ? record.memo : "",
-        categories: normalizeCategoryList(record.categories ?? record.category).map(migrateCategoryName),
+        categories: normalizeCategoryList(record.categories ?? record.category),
       } satisfies DailyPnl;
     })
     .filter((item): item is DailyPnl => item !== null);

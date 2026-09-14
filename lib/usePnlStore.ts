@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { DEFAULT_CATEGORIES, DEFAULT_CHART_SIGN_COLORS, DEFAULT_COLOR_RULES } from "@/lib/colors";
 import {
   bindRecordCategories,
-  migrateCategoryName,
   normalizeCategories,
   normalizeChartSignColors,
   normalizeColorRules,
@@ -23,6 +22,8 @@ export type StoredSettings = {
   chartSignColors: ChartSignColors;
 };
 
+type Snapshot = StoredSettings & { records: DailyPnl[] };
+
 function normalizeRecord(value: unknown): DailyPnl | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Partial<DailyPnl>;
@@ -34,7 +35,7 @@ function normalizeRecord(value: unknown): DailyPnl | null {
     categories: normalizeCategoryList(
       (record as { categories?: unknown; category?: unknown }).categories ??
         (record as { category?: unknown }).category,
-    ).map(migrateCategoryName),
+    ),
   };
 }
 
@@ -91,83 +92,192 @@ function readSettings(): StoredSettings {
   };
 }
 
+function writeSnapshot(snapshot: Snapshot) {
+  window.localStorage.setItem(STORAGE_RECORDS, JSON.stringify(snapshot.records));
+  window.localStorage.setItem(
+    STORAGE_SETTINGS,
+    JSON.stringify({
+      categories: snapshot.categories,
+      colorRules: snapshot.colorRules,
+      baseCarryover: snapshot.baseCarryover,
+      monthCarryovers: snapshot.monthCarryovers,
+      chartSignColors: snapshot.chartSignColors,
+    }),
+  );
+}
+
+function loadSnapshot(): Snapshot {
+  const settings = readSettings();
+  return {
+    ...settings,
+    records: bindRecordCategories(readRecords(), settings.categories),
+  };
+}
+
 export function usePnlStore() {
   const [records, setRecords] = useState<DailyPnl[]>([]);
-  const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
-  const [colorRules, setColorRules] = useState<ColorRule[]>(DEFAULT_COLOR_RULES);
-  const [baseCarryover, setBaseCarryover] = useState(0);
-  const [monthCarryovers, setMonthCarryovers] = useState<Record<string, number>>({});
-  const [chartSignColors, setChartSignColors] = useState<ChartSignColors>(DEFAULT_CHART_SIGN_COLORS);
+  const [categories, setCategoriesState] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
+  const [colorRules, setColorRulesState] = useState<ColorRule[]>(DEFAULT_COLOR_RULES);
+  const [baseCarryover, setBaseCarryoverState] = useState(0);
+  const [monthCarryovers, setMonthCarryoversState] = useState<Record<string, number>>({});
+  const [chartSignColors, setChartSignColorsState] = useState<ChartSignColors>(DEFAULT_CHART_SIGN_COLORS);
   const [hydrated, setHydrated] = useState(false);
+  const snapshotRef = useRef<Snapshot | null>(null);
 
-  useEffect(() => {
+  const persist = useCallback((patch: Partial<Snapshot>) => {
+    const current = snapshotRef.current;
+    if (!current) return;
+    const next = { ...current, ...patch };
+    snapshotRef.current = next;
+    writeSnapshot(next);
+  }, []);
+
+  useLayoutEffect(() => {
     try {
-      const settings = readSettings();
-      setRecords(bindRecordCategories(readRecords(), settings.categories));
-      setCategories(settings.categories);
-      setColorRules(settings.colorRules);
-      setBaseCarryover(settings.baseCarryover);
-      setMonthCarryovers(settings.monthCarryovers);
-      setChartSignColors(settings.chartSignColors);
+      const snapshot = loadSnapshot();
+      snapshotRef.current = snapshot;
+      setRecords(snapshot.records);
+      setCategoriesState(snapshot.categories);
+      setColorRulesState(snapshot.colorRules);
+      setBaseCarryoverState(snapshot.baseCarryover);
+      setMonthCarryoversState(snapshot.monthCarryovers);
+      setChartSignColorsState(snapshot.chartSignColors);
     } catch {
-      setRecords(SAMPLE_RECORDS);
-      setCategories(DEFAULT_CATEGORIES);
-      setColorRules(DEFAULT_COLOR_RULES);
-      setChartSignColors({ ...DEFAULT_CHART_SIGN_COLORS });
+      const fallback: Snapshot = {
+        records: SAMPLE_RECORDS,
+        categories: DEFAULT_CATEGORIES,
+        colorRules: DEFAULT_COLOR_RULES,
+        baseCarryover: 0,
+        monthCarryovers: {},
+        chartSignColors: { ...DEFAULT_CHART_SIGN_COLORS },
+      };
+      snapshotRef.current = fallback;
+      setRecords(fallback.records);
+      setCategoriesState(fallback.categories);
+      setColorRulesState(fallback.colorRules);
+      setChartSignColorsState(fallback.chartSignColors);
     } finally {
       setHydrated(true);
     }
+
+    const flush = () => {
+      if (snapshotRef.current) writeSnapshot(snapshotRef.current);
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", flush);
+    };
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(STORAGE_RECORDS, JSON.stringify(records));
-    window.localStorage.setItem(
-      STORAGE_SETTINGS,
-      JSON.stringify({ categories, colorRules, baseCarryover, monthCarryovers, chartSignColors }),
-    );
-  }, [hydrated, records, categories, colorRules, baseCarryover, monthCarryovers, chartSignColors]);
+  const upsert = useCallback(
+    (nextRecord: DailyPnl) => {
+      setRecords((current) => {
+        const next = current.filter((item) => item.date !== nextRecord.date);
+        next.push(nextRecord);
+        next.sort((a, b) => a.date.localeCompare(b.date));
+        persist({ records: next });
+        return next;
+      });
+    },
+    [persist],
+  );
 
-  const upsert = useCallback((nextRecord: DailyPnl) => {
-    setRecords((current) => {
-      const next = current.filter((item) => item.date !== nextRecord.date);
-      next.push(nextRecord);
-      next.sort((a, b) => a.date.localeCompare(b.date));
-      return next;
-    });
-  }, []);
+  const remove = useCallback(
+    (date: string) => {
+      setRecords((current) => {
+        const next = current.filter((item) => item.date !== date);
+        persist({ records: next });
+        return next;
+      });
+    },
+    [persist],
+  );
 
-  const remove = useCallback((date: string) => {
-    setRecords((current) => current.filter((item) => item.date !== date));
-  }, []);
+  const setCategories = useCallback(
+    (next: CategoryOption[]) => {
+      persist({ categories: next });
+      setCategoriesState(next);
+    },
+    [persist],
+  );
 
-  const setMonthCarryover = useCallback((key: string, value: number | null) => {
-    setMonthCarryovers((current) => {
-      const next = { ...current };
-      if (value === null) delete next[key];
-      else next[key] = value;
-      return next;
-    });
-  }, []);
+  const setColorRules = useCallback(
+    (next: ColorRule[]) => {
+      persist({ colorRules: next });
+      setColorRulesState(next);
+    },
+    [persist],
+  );
+
+  const setBaseCarryover = useCallback(
+    (value: number) => {
+      persist({ baseCarryover: value });
+      setBaseCarryoverState(value);
+    },
+    [persist],
+  );
+
+  const setMonthCarryover = useCallback(
+    (key: string, value: number | null) => {
+      setMonthCarryoversState((current) => {
+        const next = { ...current };
+        if (value === null) delete next[key];
+        else next[key] = value;
+        persist({ monthCarryovers: next });
+        return next;
+      });
+    },
+    [persist],
+  );
+
+  const setChartSignColors = useCallback(
+    (next: ChartSignColors) => {
+      persist({ chartSignColors: next });
+      setChartSignColorsState(next);
+    },
+    [persist],
+  );
 
   const resetSample = useCallback(() => {
-    setRecords(SAMPLE_RECORDS);
-    setCategories(DEFAULT_CATEGORIES);
-    setColorRules(DEFAULT_COLOR_RULES);
-    setBaseCarryover(0);
-    setMonthCarryovers({});
-    setChartSignColors({ ...DEFAULT_CHART_SIGN_COLORS });
+    const snapshot: Snapshot = {
+      records: SAMPLE_RECORDS,
+      categories: DEFAULT_CATEGORIES,
+      colorRules: DEFAULT_COLOR_RULES,
+      baseCarryover: 0,
+      monthCarryovers: {},
+      chartSignColors: { ...DEFAULT_CHART_SIGN_COLORS },
+    };
+    snapshotRef.current = snapshot;
+    writeSnapshot(snapshot);
     window.localStorage.setItem(STORAGE_SEED, "1");
+    setRecords(snapshot.records);
+    setCategoriesState(snapshot.categories);
+    setColorRulesState(snapshot.colorRules);
+    setBaseCarryoverState(0);
+    setMonthCarryoversState({});
+    setChartSignColorsState(snapshot.chartSignColors);
   }, []);
 
   const applyBackup = useCallback((payload: BackupPayload) => {
-    const categories = payload.settings.categories.length ? payload.settings.categories : DEFAULT_CATEGORIES;
-    setRecords(bindRecordCategories(payload.records, categories));
-    setCategories(categories);
-    setColorRules(payload.settings.colorRules.length ? payload.settings.colorRules : DEFAULT_COLOR_RULES);
-    setBaseCarryover(payload.settings.baseCarryover);
-    setMonthCarryovers(payload.settings.monthCarryovers);
-    setChartSignColors(payload.settings.chartSignColors);
+    const nextCategories = payload.settings.categories.length ? payload.settings.categories : DEFAULT_CATEGORIES;
+    const snapshot: Snapshot = {
+      records: bindRecordCategories(payload.records, nextCategories),
+      categories: nextCategories,
+      colorRules: payload.settings.colorRules.length ? payload.settings.colorRules : DEFAULT_COLOR_RULES,
+      baseCarryover: payload.settings.baseCarryover,
+      monthCarryovers: payload.settings.monthCarryovers,
+      chartSignColors: payload.settings.chartSignColors,
+    };
+    snapshotRef.current = snapshot;
+    writeSnapshot(snapshot);
+    setRecords(snapshot.records);
+    setCategoriesState(snapshot.categories);
+    setColorRulesState(snapshot.colorRules);
+    setBaseCarryoverState(snapshot.baseCarryover);
+    setMonthCarryoversState(snapshot.monthCarryovers);
+    setChartSignColorsState(snapshot.chartSignColors);
   }, []);
 
   return {
