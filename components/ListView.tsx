@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { CategoryTags } from "@/components/CategoryTag";
 import { pnlStyle } from "@/lib/colors";
-import { formatSigned, monthLabel } from "@/lib/pnl";
-import type { CategoryOption, ColorRule, MonthBlock } from "@/types/trade";
+import { formatMonthLabel, t } from "@/lib/i18n";
+import { formatSigned } from "@/lib/pnl";
+import type { CategoryOption, ColorRule, Locale, MonthBlock } from "@/types/trade";
 
 type Props = {
+  locale: Locale;
   blocks: MonthBlock[];
   selectedDate: string;
   colorRules: ColorRule[];
@@ -15,7 +17,7 @@ type Props = {
   onSelectDate: (date: string) => void;
 };
 
-export function ListView({ blocks, selectedDate, colorRules, categories, onSelectDate }: Props) {
+export function ListView({ locale, blocks, selectedDate, colorRules, categories, onSelectDate }: Props) {
   const selectedKey = selectedDate.slice(0, 7);
   const [openKeys, setOpenKeys] = useState<string[]>([selectedKey]);
 
@@ -28,7 +30,7 @@ export function ListView({ blocks, selectedDate, colorRules, categories, onSelec
   };
 
   if (blocks.length === 0) {
-    return <div className="rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">データがありません。</div>;
+    return <div className="rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">{t(locale, "emptyData")}</div>;
   }
 
   return (
@@ -45,8 +47,10 @@ export function ListView({ blocks, selectedDate, colorRules, categories, onSelec
             >
               <span className="flex items-center gap-2 font-medium text-slate-800">
                 {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                {monthLabel(block.year, block.month)}
-                <span className="text-xs font-normal text-slate-500">繰越 {formatSigned(block.carryover)}</span>
+                {formatMonthLabel(locale, block.year, block.month)}
+                <span className="text-xs font-normal text-slate-500">
+                  {t(locale, "carryover")} {formatSigned(block.carryover)}
+                </span>
               </span>
               <span className="rounded px-2 py-1 text-sm" style={pnlStyle(block.total, colorRules)}>
                 {formatSigned(block.total)}
@@ -57,12 +61,12 @@ export function ListView({ blocks, selectedDate, colorRules, categories, onSelec
                 <table className="w-full border-collapse text-right text-sm">
                   <thead>
                     <tr className="bg-slate-100 text-slate-600">
-                      <th className="px-3 py-2 font-medium">日付</th>
-                      <th className="px-3 py-2 font-medium">損益</th>
-                      <th className="px-3 py-2 font-medium">月次損益</th>
-                      <th className="px-3 py-2 font-medium">通算損益</th>
-                      <th className="px-3 py-2 font-medium">項目</th>
-                      <th className="px-3 py-2 text-left font-medium">メモ</th>
+                      <th className="px-3 py-2 font-medium">{t(locale, "date")}</th>
+                      <th className="px-3 py-2 font-medium">{t(locale, "pnl")}</th>
+                      <th className="px-3 py-2 font-medium">{t(locale, "monthlyPnl")}</th>
+                      <th className="px-3 py-2 font-medium">{t(locale, "cumulativePnl")}</th>
+                      <th className="px-3 py-2 font-medium">{t(locale, "category")}</th>
+                      <th className="px-3 py-2 text-left font-medium">{t(locale, "memo")}</th>
                     </tr>
                   </thead>
                   <tbody>

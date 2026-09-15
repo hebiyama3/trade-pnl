@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { CategoryOption, ChartSignColors, ColorRule } from "@/types/trade";
+import type { CategoryOption, CalendarPnlSize, ChartSignColors, ColorRule } from "@/types/trade";
 
 export const DEFAULT_TAG_COLOR = "#000000";
 export const DEFAULT_TAG_BACKGROUND = "#e5e7eb";
@@ -9,6 +9,18 @@ export const DEFAULT_CHART_SIGN_COLORS: ChartSignColors = {
   positive: "#a2dafd",
   negative: "#fdc1de",
 };
+
+export const DEFAULT_CALENDAR_PNL_SIZE: CalendarPnlSize = "s";
+
+export function calendarPnlSizeClass(size: CalendarPnlSize): string {
+  if (size === "l") return "text-base";
+  if (size === "m") return "text-sm";
+  return "text-xs";
+}
+
+export function normalizeCalendarPnlSize(value: unknown): CalendarPnlSize {
+  return value === "s" || value === "m" || value === "l" ? value : DEFAULT_CALENDAR_PNL_SIZE;
+}
 
 export const DEFAULT_CATEGORIES: CategoryOption[] = [
   { id: "1h", name: "1h", background: "#FFE082", color: DEFAULT_TAG_COLOR },

@@ -3,15 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { CategoryTags } from "@/components/CategoryTag";
-import type { CategoryOption } from "@/types/trade";
+import { t } from "@/lib/i18n";
+import type { CategoryOption, Locale } from "@/types/trade";
 
 type Props = {
+  locale: Locale;
   options: CategoryOption[];
   value: string[];
   onChange: (value: string[]) => void;
 };
 
-export function CategoryMultiSelect({ options, value, onChange }: Props) {
+export function CategoryMultiSelect({ locale, options, value, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +36,7 @@ export function CategoryMultiSelect({ options, value, onChange }: Props) {
         onClick={() => setOpen((current) => !current)}
         className="flex min-h-[42px] w-full items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-sm outline-none ring-sky-200 focus:ring"
       >
-        {value.length ? <CategoryTags names={value} categories={options} /> : <span className="text-slate-400">項目を選択</span>}
+        {value.length ? <CategoryTags names={value} categories={options} /> : <span className="text-slate-400">{t(locale, "selectCategory")}</span>}
         <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
       </button>
       {open ? (

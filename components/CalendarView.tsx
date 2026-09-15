@@ -2,18 +2,19 @@
 
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { CategoryTags } from "@/components/CategoryTag";
-import { pnlStyle } from "@/lib/colors";
+import { calendarPnlSizeClass, pnlStyle } from "@/lib/colors";
+import { t, WEEKDAY_KEYS } from "@/lib/i18n";
 import { formatYen } from "@/lib/pnl";
-import type { CalendarCell, CategoryOption, ColorRule } from "@/types/trade";
-
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import type { CalendarCell, CalendarPnlSize, CategoryOption, ColorRule, Locale } from "@/types/trade";
 
 type Props = {
+  locale: Locale;
   title: string;
   cells: CalendarCell[];
   selectedDate: string;
   colorRules: ColorRule[];
   categories: CategoryOption[];
+  pnlSize: CalendarPnlSize;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -21,11 +22,13 @@ type Props = {
 };
 
 export function CalendarView({
+  locale,
   title,
   cells,
   selectedDate,
   colorRules,
   categories,
+  pnlSize,
   onPrev,
   onNext,
   onToday,
@@ -37,24 +40,24 @@ export function CalendarView({
         <h2 className="text-xl font-medium text-slate-700">{title}</h2>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <div className="flex overflow-hidden rounded-md border border-slate-200">
-            <button type="button" onClick={onPrev} className="px-2 py-1.5 text-slate-500 hover:bg-slate-50" aria-label="前月">
+            <button type="button" onClick={onPrev} className="px-2 py-1.5 text-slate-500 hover:bg-slate-50" aria-label={t(locale, "prevMonth")}>
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <button type="button" onClick={onNext} className="border-l border-slate-200 px-2 py-1.5 text-slate-500 hover:bg-slate-50" aria-label="翌月">
+            <button type="button" onClick={onNext} className="border-l border-slate-200 px-2 py-1.5 text-slate-500 hover:bg-slate-50" aria-label={t(locale, "nextMonth")}>
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
           <button type="button" onClick={onToday} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-slate-600 hover:bg-slate-50">
             <Calendar className="h-4 w-4" />
-            Today
+            {t(locale, "today")}
           </button>
         </div>
       </header>
 
       <div className="grid grid-cols-7 border-b border-slate-100 bg-white text-center text-base font-semibold text-slate-700">
-        {WEEKDAYS.map((label) => (
-          <div key={label} className="px-2 py-2.5">
-            {label}
+        {WEEKDAY_KEYS.map((key) => (
+          <div key={key} className="px-2 py-2.5">
+            {t(locale, key)}
           </div>
         ))}
       </div>
@@ -75,7 +78,7 @@ export function CalendarView({
                 {cell.day}
               </div>
               <div
-                className="mb-1 truncate rounded px-1.5 py-0.5 text-xs"
+                className={`mb-1 truncate rounded px-1.5 py-0.5 ${calendarPnlSizeClass(pnlSize)}`}
                 style={cell.profitLoss === null ? { color: "#94a3b8" } : pnlStyle(cell.profitLoss, colorRules)}
               >
                 {cell.profitLoss === null ? "—" : formatYen(cell.profitLoss)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BarChart3, CalendarDays, List, Settings, Table2 } from "lucide-react";
 import { CalendarView } from "@/components/CalendarView";
 import { ChartView } from "@/components/ChartView";
@@ -8,10 +8,10 @@ import { ListView } from "@/components/ListView";
 import { PnlForm } from "@/components/PnlForm";
 import { SettingsView } from "@/components/SettingsView";
 import { YearListView } from "@/components/YearListView";
+import { formatMonthLabel, t } from "@/lib/i18n";
 import {
   buildCalendarCells,
   buildRecordedMonthBlocks,
-  monthTitle,
   parseDateKey,
   shiftMonth,
   toDateKey,
@@ -20,20 +20,26 @@ import { usePnlStore } from "@/lib/usePnlStore";
 import { buildBackup } from "@/lib/backup";
 import type { ViewMode } from "@/types/trade";
 
-const TABS: { id: ViewMode; label: string; icon: typeof List }[] = [
-  { id: "list", label: "リスト", icon: List },
-  { id: "chart", label: "グラフ", icon: BarChart3 },
-  { id: "calendar", label: "カレンダー", icon: CalendarDays },
-  { id: "year", label: "年間リスト", icon: Table2 },
-  { id: "settings", label: "設定", icon: Settings },
+const TABS: { id: ViewMode; icon: typeof List; labelKey: "tabList" | "tabChart" | "tabCalendar" | "tabYear" | "tabSettings" }[] = [
+  { id: "list", labelKey: "tabList", icon: List },
+  { id: "chart", labelKey: "tabChart", icon: BarChart3 },
+  { id: "calendar", labelKey: "tabCalendar", icon: CalendarDays },
+  { id: "year", labelKey: "tabYear", icon: Table2 },
+  { id: "settings", labelKey: "tabSettings", icon: Settings },
 ];
 
 export function Dashboard() {
   const store = usePnlStore();
+  const locale = store.locale;
   const [year, setYear] = useState(2026);
   const [month, setMonth] = useState(9);
   const [view, setView] = useState<ViewMode>("list");
   const [selectedDate, setSelectedDate] = useState("2026-09-04");
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.title = t(locale, "appTitle");
+  }, [locale]);
 
   const selectedRecord = store.records.find((item) => item.date === selectedDate) ?? null;
   const blocks = useMemo(
@@ -63,8 +69,8 @@ export function Dashboard() {
   return (
     <main className={`mx-auto px-4 py-6 sm:px-6 ${view === "year" ? "max-w-[1800px]" : "max-w-[1400px]"}`}>
       <header className="mb-5">
-        <p className="text-xs font-medium tracking-wide text-slate-500">PERSONAL DAY TRADE</p>
-        <h1 className="text-2xl font-semibold text-slate-800">損益管理</h1>
+        <p className="text-xs font-medium tracking-wide text-slate-500">{t(locale, "brandKicker")}</p>
+        <h1 className="text-2xl font-semibold text-slate-800">{t(locale, "appTitle")}</h1>
         <div className="mt-4 flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -79,7 +85,7 @@ export function Dashboard() {
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                {tab.label}
+                {t(locale, tab.labelKey)}
               </button>
             );
           })}
@@ -89,6 +95,7 @@ export function Dashboard() {
       {store.hydrated && view !== "settings" && view !== "chart" ? (
         <div className="mb-4">
           <PnlForm
+            locale={locale}
             selectedDate={selectedDate}
             selectedRecord={selectedRecord}
             categories={store.categories}
@@ -100,9 +107,10 @@ export function Dashboard() {
       ) : null}
 
       {!store.hydrated ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">データを読み込み中です…</div>
+        <div className="rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">{t(locale, "loading")}</div>
       ) : view === "list" ? (
         <ListView
+          locale={locale}
           blocks={blocks}
           selectedDate={selectedDate}
           colorRules={store.colorRules}
@@ -110,14 +118,16 @@ export function Dashboard() {
           onSelectDate={selectDate}
         />
       ) : view === "chart" ? (
-        <ChartView records={store.records} year={year} month={month} chartSignColors={store.chartSignColors} />
+        <ChartView locale={locale} records={store.records} year={year} month={month} chartSignColors={store.chartSignColors} />
       ) : view === "calendar" ? (
         <CalendarView
-          title={monthTitle(year, month)}
+          locale={locale}
+          title={formatMonthLabel(locale, year, month)}
           cells={cells}
           selectedDate={selectedDate}
           colorRules={store.colorRules}
           categories={store.categories}
+          pnlSize={store.calendarPnlSize}
           onPrev={() => goMonth(-1)}
           onNext={() => goMonth(1)}
           onToday={goToday}
@@ -125,6 +135,7 @@ export function Dashboard() {
         />
       ) : view === "year" ? (
         <YearListView
+          locale={locale}
           records={store.records}
           colorRules={store.colorRules}
           monthCarryovers={store.monthCarryovers}
@@ -135,17 +146,22 @@ export function Dashboard() {
         />
       ) : (
         <SettingsView
+          locale={locale}
           recordsCount={store.records.length}
           categories={store.categories}
           colorRules={store.colorRules}
           baseCarryover={store.baseCarryover}
           monthCarryovers={store.monthCarryovers}
           chartSignColors={store.chartSignColors}
+          calendarPnlSize={store.calendarPnlSize}
+          onChangeLocale={store.setLocale}
           onChangeCategories={store.setCategories}
           onChangeRules={store.setColorRules}
           onChangeBaseCarryover={store.setBaseCarryover}
           onChangeChartSignColors={store.setChartSignColors}
+          onChangeCalendarPnlSize={store.setCalendarPnlSize}
           onResetSample={store.resetSample}
+          onClearInputs={store.clearInputs}
           onExportBackup={() =>
             buildBackup({
               records: store.records,
@@ -154,6 +170,8 @@ export function Dashboard() {
               baseCarryover: store.baseCarryover,
               monthCarryovers: store.monthCarryovers,
               chartSignColors: store.chartSignColors,
+              calendarPnlSize: store.calendarPnlSize,
+              locale: store.locale,
             })
           }
           onImportBackup={store.applyBackup}

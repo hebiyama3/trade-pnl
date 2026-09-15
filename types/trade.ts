@@ -19,6 +19,10 @@ export type ChartSignColors = {
   negative: string;
 };
 
+export type CalendarPnlSize = "s" | "m" | "l";
+
+export type Locale = "ja" | "en";
+
 export type MonthRow = {
   day: number;
   date: string;

@@ -14,20 +14,22 @@ import {
   YAxis,
 } from "recharts";
 import { CHART_BAR_DEFAULT } from "@/lib/colors";
+import { t } from "@/lib/i18n";
 import { chartRangePoints, daysInMonth, lastDayOfMonth, pad2, toDateKey } from "@/lib/pnl";
-import type { ChartSignColors, DailyPnl } from "@/types/trade";
+import type { ChartSignColors, DailyPnl, Locale } from "@/types/trade";
 
 const AXIS_COLOR = "#4b5563";
 const LINE_COLOR = "#1c2534";
 
 type Props = {
+  locale: Locale;
   records: DailyPnl[];
   year: number;
   month: number;
   chartSignColors: ChartSignColors;
 };
 
-export function ChartView({ records, year, month, chartSignColors }: Props) {
+export function ChartView({ locale, records, year, month, chartSignColors }: Props) {
   const defaultStart = toDateKey(year, month, 1);
   const defaultEnd = lastDayOfMonth(year, month);
   const [start, setStart] = useState(defaultStart);
@@ -47,17 +49,17 @@ export function ChartView({ records, year, month, chartSignColors }: Props) {
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-lg font-medium text-slate-800">複合グラフ</h2>
-          <p className="text-sm text-slate-500">開始日を0とした期間累計と日次損益を、単一のY軸で表示します。</p>
+          <h2 className="text-lg font-medium text-slate-800">{t(locale, "chartTitle")}</h2>
+          <p className="text-sm text-slate-500">{t(locale, "chartHelp")}</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-xs text-slate-500">
-            開始日
+            {t(locale, "startDate")}
             <input type="date" value={start} onChange={(event) => setStart(event.target.value)} className="rounded-md border border-slate-200 px-3 py-1.5 text-sm" />
           </label>
           <span className="pb-2 text-slate-400">〜</span>
           <label className="flex flex-col gap-1 text-xs text-slate-500">
-            終了日
+            {t(locale, "endDate")}
             <input type="date" value={end} onChange={(event) => setEnd(event.target.value)} className="rounded-md border border-slate-200 px-3 py-1.5 text-sm" />
           </label>
           <button type="button" onClick={() => applyMonth(year, month)} className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">
@@ -71,7 +73,7 @@ export function ChartView({ records, year, month, chartSignColors }: Props) {
             }}
             className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
           >
-            今月
+            {t(locale, "thisMonth")}
           </button>
         </div>
       </div>
@@ -81,25 +83,25 @@ export function ChartView({ records, year, month, chartSignColors }: Props) {
           <input type="checkbox" checked={showDaily} onChange={(event) => setShowDaily(event.target.checked)} />
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: colorBySign ? chartSignColors.positive : CHART_BAR_DEFAULT }} />
-            日次損益
+            {t(locale, "dailyPnl")}
           </span>
         </label>
         <label className="inline-flex items-center gap-2">
           <input type="checkbox" checked={showCumulative} onChange={(event) => setShowCumulative(event.target.checked)} />
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-0.5 w-4" style={{ backgroundColor: LINE_COLOR }} />
-            期間累計
+            {t(locale, "periodCumulative")}
           </span>
         </label>
         <label className="inline-flex items-center gap-2">
           <input type="checkbox" checked={colorBySign} onChange={(event) => setColorBySign(event.target.checked)} />
-          色変更
+          {t(locale, "colorBySign")}
         </label>
       </div>
 
       {data.length === 0 || (!showDaily && !showCumulative) ? (
         <div className="flex h-[480px] items-center justify-center text-sm text-slate-400">
-          {data.length === 0 ? "この期間の損益データがありません" : "表示する系列を選択してください"}
+          {data.length === 0 ? t(locale, "chartNoData") : t(locale, "chartNoSeries")}
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={520}>
@@ -120,7 +122,7 @@ export function ChartView({ records, year, month, chartSignColors }: Props) {
               labelFormatter={(label) => String(label)}
             />
             {showDaily ? (
-              <Bar dataKey="daily" name="日次損益" maxBarSize={22} isAnimationActive={false}>
+              <Bar dataKey="daily" name={t(locale, "dailyPnl")} maxBarSize={22} isAnimationActive={false}>
                 {data.map((entry) => (
                   <Cell
                     key={entry.date}
@@ -134,7 +136,7 @@ export function ChartView({ records, year, month, chartSignColors }: Props) {
               <Line
                 type="linear"
                 dataKey="periodCumulative"
-                name="期間累計"
+                name={t(locale, "periodCumulative")}
                 stroke={LINE_COLOR}
                 strokeWidth={2}
                 dot={false}

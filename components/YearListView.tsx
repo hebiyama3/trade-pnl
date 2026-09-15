@@ -2,17 +2,32 @@
 
 import { useMemo } from "react";
 import { pnlStyle } from "@/lib/colors";
+import { t } from "@/lib/i18n";
 import { buildYearColumns, formatSigned, toDateKey } from "@/lib/pnl";
-import type { ColorRule, DailyPnl } from "@/types/trade";
+import type { ColorRule, DailyPnl, Locale, YearColumn } from "@/types/trade";
 
 const CELL = "border border-[#b8bfc9]";
 const STICKY = "sticky left-0 z-10 w-[4.6rem] min-w-[4.6rem] max-w-[4.6rem]";
+const BASE_DIGITS = formatSigned(-999999).length;
 
 function signedText(value: number) {
   return value > 0 ? "text-sky-700" : value < 0 ? "text-rose-600" : "text-slate-700";
 }
 
+function columnWidthCh(column: YearColumn, monthCarryovers: Record<string, number>): number {
+  const texts = [formatSigned(column.total), formatSigned(column.equity)];
+  for (const value of column.values) {
+    if (value !== null) texts.push(formatSigned(value));
+  }
+  if (Object.prototype.hasOwnProperty.call(monthCarryovers, column.key)) {
+    texts.push(formatSigned(monthCarryovers[column.key] ?? 0));
+  }
+  const widest = Math.max(BASE_DIGITS, ...texts.map((text) => text.length));
+  return widest + 1;
+}
+
 type Props = {
+  locale: Locale;
   records: DailyPnl[];
   colorRules: ColorRule[];
   monthCarryovers: Record<string, number>;
@@ -23,6 +38,7 @@ type Props = {
 };
 
 export function YearListView({
+  locale,
   records,
   colorRules,
   monthCarryovers,
@@ -35,22 +51,31 @@ export function YearListView({
     () => buildYearColumns(records, monthCarryovers, baseCarryover),
     [records, monthCarryovers, baseCarryover],
   );
+  const widths = columns.map((column) => columnWidthCh(column, monthCarryovers));
+  const sticky = locale === "en" ? "sticky left-0 z-10 w-[6.6rem] min-w-[6.6rem] max-w-[6.6rem]" : STICKY;
+  const tableWidth = `calc(${locale === "en" ? "6.6rem" : "4.6rem"} + ${widths.reduce((sum, width) => sum + width, 0)}ch)`;
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <header className="border-b border-slate-100 px-4 py-3">
-        <h2 className="text-lg font-medium text-slate-800">年間リスト</h2>
-        <p className="text-xs text-slate-500">「修正後」に月末残高を入れると、翌月以降の通算はその数字から計算します。</p>
+        <h2 className="text-lg font-medium text-slate-800">{t(locale, "yearListTitle")}</h2>
+        <p className="text-xs text-slate-500">{t(locale, "yearListHelp")}</p>
       </header>
       <div className="overflow-auto">
-        <table className="border-collapse text-right text-xs">
+        <table className="table-fixed border-collapse text-right text-xs" style={{ width: tableWidth }}>
+          <colgroup>
+            <col style={{ width: locale === "en" ? "6.6rem" : "4.6rem" }} />
+            {widths.map((width, index) => (
+              <col key={columns[index].key} style={{ width: `${width}ch` }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
-              <th className={`${STICKY} z-20 bg-slate-100 px-1 py-2 font-medium text-slate-500 ${CELL}`} />
+              <th className={`${sticky} z-20 bg-slate-100 px-1 py-2 font-medium text-slate-500 ${CELL}`} />
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`w-[4.8rem] min-w-[4.8rem] max-w-[4.8rem] bg-slate-100 px-1 py-2 text-center font-bold text-slate-800 ${CELL}`}
+                  className={`overflow-hidden bg-slate-100 px-0.5 py-2 text-center font-bold text-slate-800 ${CELL}`}
                 >
                   {column.label}
                 </th>
@@ -60,7 +85,7 @@ export function YearListView({
           <tbody>
             {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
               <tr key={day}>
-                <td className={`${STICKY} bg-slate-100 px-1 py-1 text-center text-slate-600 ${CELL}`}>
+                <td className={`${sticky} bg-slate-100 px-1 py-1 text-center text-slate-600 ${CELL}`}>
                   {day}
                 </td>
                 {columns.map((column) => {
@@ -73,7 +98,7 @@ export function YearListView({
                       onClick={() => {
                         if (!invalid) onSelectDate(date);
                       }}
-                      className={`w-[4.8rem] min-w-[4.8rem] max-w-[4.8rem] px-1 py-1 ${CELL} ${invalid ? "bg-slate-50" : "cursor-pointer"} ${
+                      className={`whitespace-nowrap py-1 pl-[1ch] pr-0.5 ${CELL} ${invalid ? "bg-slate-50" : "cursor-pointer"} ${
                         selectedDate === date ? "outline outline-2 outline-offset-[-2px] outline-sky-500" : ""
                       }`}
                       style={invalid || value === null ? undefined : pnlStyle(value, colorRules)}
@@ -87,25 +112,25 @@ export function YearListView({
           </tbody>
           <tfoot>
             <tr>
-              <td className={`${STICKY} bg-white px-1 py-2 font-medium text-slate-700 ${CELL}`}>月次合計</td>
+              <td className={`${sticky} bg-white px-1 py-2 font-medium text-slate-700 ${CELL}`}>{t(locale, "monthTotal")}</td>
               {columns.map((column) => (
-                <td key={`${column.key}-total`} className={`bg-white px-1 py-2 font-medium ${CELL} ${signedText(column.total)}`}>
+                <td key={`${column.key}-total`} className={`whitespace-nowrap bg-white py-2 pl-[1ch] pr-0.5 font-medium ${CELL} ${signedText(column.total)}`}>
                   {formatSigned(column.total)}
                 </td>
               ))}
             </tr>
             <tr>
-              <td className={`${STICKY} bg-white px-1 py-2 font-medium text-slate-700 ${CELL}`}>通算損益</td>
+              <td className={`${sticky} bg-white px-1 py-2 font-medium text-slate-700 ${CELL}`}>{t(locale, "cumulativePnl")}</td>
               {columns.map((column) => (
-                <td key={`${column.key}-equity`} className={`bg-white px-1 py-2 font-medium ${CELL} ${signedText(column.equity)}`}>
+                <td key={`${column.key}-equity`} className={`whitespace-nowrap bg-white py-2 pl-[1ch] pr-0.5 font-medium ${CELL} ${signedText(column.equity)}`}>
                   {formatSigned(column.equity)}
                 </td>
               ))}
             </tr>
             <tr>
-              <td className={`${STICKY} bg-white px-1 py-2 font-medium text-slate-700 ${CELL}`}>修正後</td>
+              <td className={`${sticky} bg-white px-1 py-2 font-medium text-slate-700 ${CELL}`}>{t(locale, "adjusted")}</td>
               {columns.map((column) => (
-                <td key={`${column.key}-corrected`} className={`bg-white px-0.5 py-1 ${CELL}`}>
+                <td key={`${column.key}-corrected`} className={`bg-white py-1 pl-[1ch] pr-0.5 ${CELL}`}>
                   <input
                     type="number"
                     value={Object.prototype.hasOwnProperty.call(monthCarryovers, column.key) ? monthCarryovers[column.key] : ""}
@@ -119,8 +144,8 @@ export function YearListView({
                       const next = Number(raw);
                       if (!Number.isNaN(next)) onChangeCarryover(column.key, next);
                     }}
-                    className="w-full bg-white px-0.5 py-0.5 text-right text-[11px] outline-none"
-                    title="修正後の月末残高（翌月の起点）"
+                    className="w-full bg-white py-0.5 text-right text-[11px] outline-none"
+                    title={t(locale, "adjustedTitle")}
                   />
                 </td>
               ))}
