@@ -1,9 +1,10 @@
-import type { CalendarCell, DailyPnl, MonthBlock, MonthRow, YearColumn } from "@/types/trade";
+import type { CalendarCell, Currency, DailyPnl, MonthBlock, MonthRow, YearColumn } from "@/types/trade";
 
 export const STORAGE_RECORDS = "trade-pnl.records.v3";
 export const STORAGE_SETTINGS = "trade-pnl.settings.v7";
 export const LEGACY_SETTINGS_KEYS = ["trade-pnl.settings.v6", "trade-pnl.settings.v5", "trade-pnl.settings.v4", "trade-pnl.settings.v3"];
 export const STORAGE_SEED = "trade-pnl.seed.sep2026-v3";
+export const STORAGE_SEED_JUNJUL = "trade-pnl.seed.junjul2026-v1";
 export const LEGACY_STORAGE_KEYS = ["trade-pnl.records.v2", "trade-pnl.records.v1"];
 
 export function pad2(value: number): string {
@@ -39,13 +40,24 @@ export function monthTitle(year: number, month: number): string {
   return `${year}年${month}月`;
 }
 
+export const DEFAULT_CURRENCY: Currency = "¥";
+export const CURRENCIES: Currency[] = ["¥", "$", "€"];
+
+export function normalizeCurrency(value: unknown): Currency {
+  return value === "$" || value === "€" ? value : DEFAULT_CURRENCY;
+}
+
 export function formatSigned(value: number): string {
   return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
-export function formatYen(value: number): string {
+export function formatMoney(value: number, currency: Currency = DEFAULT_CURRENCY): string {
   const abs = Math.abs(value).toLocaleString("en-US");
-  return value < 0 ? `-¥${abs}` : `¥${abs}`;
+  return value < 0 ? `-${currency}${abs}` : `${currency}${abs}`;
+}
+
+export function formatYen(value: number): string {
+  return formatMoney(value, DEFAULT_CURRENCY);
 }
 
 export function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
@@ -243,7 +255,9 @@ export function buildCalendarCells(records: DailyPnl[], year: number, month: num
     pushCell(toDateKey(year, month, day), day, true);
   }
   let nextDay = 1;
-  while (cells.length < 42) {
+  const weeks = Math.ceil(cells.length / 7);
+  const cellCount = weeks * 7;
+  while (cells.length < cellCount) {
     pushCell(toDateKey(next.year, next.month, nextDay), nextDay, false);
     nextDay += 1;
   }
@@ -254,19 +268,49 @@ export function lastDayOfMonth(year: number, month: number): string {
   return toDateKey(year, month, daysInMonth(year, month));
 }
 
-export function chartRangePoints(records: DailyPnl[], start: string, end: string) {
+export function addDays(date: string, delta: number): string {
+  const { year, month, day } = parseDateKey(date);
+  const next = new Date(year, month - 1, day + delta);
+  return toDateKey(next.getFullYear(), next.getMonth() + 1, next.getDate());
+}
+
+export function compactDateLabel(date: string): string {
+  const { year, month, day } = parseDateKey(date);
+  return `${year}${pad2(month)}${pad2(day)}`;
+}
+
+export function chartRangePoints(records: DailyPnl[], start: string, end: string, today?: string) {
   if (!start || !end || start > end) return [];
+  const todayKey =
+    today ??
+    (() => {
+      const now = new Date();
+      return toDateKey(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    })();
+  const byDate = recordsByDate(records);
+  let lastRecordKey = "";
+  for (const record of records) {
+    if (record.date >= start && record.date <= end && record.date > lastRecordKey) lastRecordKey = record.date;
+  }
+  const cumulativeUntil = lastRecordKey > todayKey ? lastRecordKey : todayKey;
+  const points: { date: string; label: string; daily: number; periodCumulative: number | null }[] = [];
   let running = 0;
-  return records
-    .filter((record) => record.date >= start && record.date <= end && record.profitLoss !== 0)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map((record) => {
-      running += record.profitLoss;
-      return {
-        date: record.date,
-        label: record.date.slice(5),
-        daily: record.profitLoss,
-        periodCumulative: running,
-      };
+  let cursor = start;
+  while (cursor <= end) {
+    const record = byDate.get(cursor);
+    if (cursor < todayKey && !record) {
+      cursor = addDays(cursor, 1);
+      continue;
+    }
+    const daily = record ? record.profitLoss : 0;
+    running += daily;
+    points.push({
+      date: cursor,
+      label: compactDateLabel(cursor),
+      daily,
+      periodCumulative: cursor > cumulativeUntil ? null : running,
     });
+    cursor = addDays(cursor, 1);
+  }
+  return points;
 }

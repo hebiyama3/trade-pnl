@@ -23,6 +23,8 @@ export type CalendarPnlSize = "s" | "m" | "l";
 
 export type Locale = "ja" | "en";
 
+export type Currency = "¥" | "$" | "€";
+
 export type MonthRow = {
   day: number;
   date: string;

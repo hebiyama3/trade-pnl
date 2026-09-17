@@ -11,9 +11,9 @@ import {
   normalizeMonthCarryovers,
   type BackupPayload,
 } from "@/lib/backup";
-import { LEGACY_SETTINGS_KEYS, LEGACY_STORAGE_KEYS, STORAGE_RECORDS, STORAGE_SEED, STORAGE_SETTINGS, normalizeCategoryList } from "@/lib/pnl";
+import { DEFAULT_CURRENCY, LEGACY_SETTINGS_KEYS, LEGACY_STORAGE_KEYS, STORAGE_RECORDS, STORAGE_SEED, STORAGE_SEED_JUNJUL, STORAGE_SETTINGS, normalizeCategoryList, normalizeCurrency } from "@/lib/pnl";
 import { SAMPLE_RECORDS } from "@/lib/sample";
-import type { CalendarPnlSize, CategoryOption, ChartSignColors, ColorRule, DailyPnl, Locale } from "@/types/trade";
+import type { CalendarPnlSize, CategoryOption, ChartSignColors, ColorRule, Currency, DailyPnl, Locale } from "@/types/trade";
 
 export type StoredSettings = {
   categories: CategoryOption[];
@@ -23,6 +23,7 @@ export type StoredSettings = {
   chartSignColors: ChartSignColors;
   calendarPnlSize: CalendarPnlSize;
   locale: Locale;
+  currency: Currency;
 };
 
 type Snapshot = StoredSettings & { records: DailyPnl[] };
@@ -48,12 +49,23 @@ function applySeptemberSeed(records: DailyPnl[]): DailyPnl[] {
   return [...others, ...september].sort((a, b) => a.date.localeCompare(b.date));
 }
 
+function applyJuneJulySeed(records: DailyPnl[]): DailyPnl[] {
+  const injected = SAMPLE_RECORDS.filter((item) => item.date.startsWith("2026-06-") || item.date.startsWith("2026-07-"));
+  const others = records.filter((item) => !item.date.startsWith("2026-06-") && !item.date.startsWith("2026-07-"));
+  return [...others, ...injected].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function markSampleSeeds() {
+  window.localStorage.setItem(STORAGE_SEED, "1");
+  window.localStorage.setItem(STORAGE_SEED_JUNJUL, "1");
+}
+
 function readRecords(): DailyPnl[] {
   const current = window.localStorage.getItem(STORAGE_RECORDS);
   const legacy = LEGACY_STORAGE_KEYS.map((key) => window.localStorage.getItem(key)).find(Boolean) ?? null;
   const raw = current ?? legacy;
   if (!raw) {
-    window.localStorage.setItem(STORAGE_SEED, "1");
+    markSampleSeeds();
     return SAMPLE_RECORDS;
   }
   const parsed = JSON.parse(raw) as unknown;
@@ -61,13 +73,21 @@ function readRecords(): DailyPnl[] {
     ? parsed.map(normalizeRecord).filter((item): item is DailyPnl => item !== null)
     : [];
   if (records.length === 0) {
-    window.localStorage.setItem(STORAGE_SEED, "1");
+    markSampleSeeds();
     return SAMPLE_RECORDS;
   }
+  let seeded = false;
   if (!window.localStorage.getItem(STORAGE_SEED)) {
     records = applySeptemberSeed(records);
     window.localStorage.setItem(STORAGE_SEED, "1");
+    seeded = true;
   }
+  if (!window.localStorage.getItem(STORAGE_SEED_JUNJUL)) {
+    records = applyJuneJulySeed(records);
+    window.localStorage.setItem(STORAGE_SEED_JUNJUL, "1");
+    seeded = true;
+  }
+  if (seeded) window.localStorage.setItem(STORAGE_RECORDS, JSON.stringify(records));
   return records;
 }
 
@@ -83,6 +103,7 @@ function readSettings(): StoredSettings {
       chartSignColors: { ...DEFAULT_CHART_SIGN_COLORS },
       calendarPnlSize: DEFAULT_CALENDAR_PNL_SIZE,
       locale: DEFAULT_LOCALE,
+      currency: DEFAULT_CURRENCY,
     };
   }
   const parsed = JSON.parse(raw) as Partial<StoredSettings>;
@@ -96,6 +117,7 @@ function readSettings(): StoredSettings {
     chartSignColors: normalizeChartSignColors(parsed.chartSignColors),
     calendarPnlSize: normalizeCalendarPnlSize(parsed.calendarPnlSize),
     locale: normalizeLocale(parsed.locale),
+    currency: normalizeCurrency(parsed.currency),
   };
 }
 
@@ -111,6 +133,7 @@ function writeSnapshot(snapshot: Snapshot) {
       chartSignColors: snapshot.chartSignColors,
       calendarPnlSize: snapshot.calendarPnlSize,
       locale: snapshot.locale,
+      currency: snapshot.currency,
     }),
   );
 }
@@ -132,6 +155,7 @@ export function usePnlStore() {
   const [chartSignColors, setChartSignColorsState] = useState<ChartSignColors>(DEFAULT_CHART_SIGN_COLORS);
   const [calendarPnlSize, setCalendarPnlSizeState] = useState<CalendarPnlSize>(DEFAULT_CALENDAR_PNL_SIZE);
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+  const [currency, setCurrencyState] = useState<Currency>(DEFAULT_CURRENCY);
   const [hydrated, setHydrated] = useState(false);
   const snapshotRef = useRef<Snapshot | null>(null);
 
@@ -155,6 +179,7 @@ export function usePnlStore() {
       setChartSignColorsState(snapshot.chartSignColors);
       setCalendarPnlSizeState(snapshot.calendarPnlSize);
       setLocaleState(snapshot.locale);
+      setCurrencyState(snapshot.currency);
     } catch {
       const fallback: Snapshot = {
         records: SAMPLE_RECORDS,
@@ -165,6 +190,7 @@ export function usePnlStore() {
         chartSignColors: { ...DEFAULT_CHART_SIGN_COLORS },
         calendarPnlSize: DEFAULT_CALENDAR_PNL_SIZE,
         locale: DEFAULT_LOCALE,
+        currency: DEFAULT_CURRENCY,
       };
       snapshotRef.current = fallback;
       setRecords(fallback.records);
@@ -173,6 +199,7 @@ export function usePnlStore() {
       setChartSignColorsState(fallback.chartSignColors);
       setCalendarPnlSizeState(fallback.calendarPnlSize);
       setLocaleState(fallback.locale);
+      setCurrencyState(fallback.currency);
     } finally {
       setHydrated(true);
     }
@@ -273,8 +300,17 @@ export function usePnlStore() {
     [persist],
   );
 
+  const setCurrency = useCallback(
+    (next: Currency) => {
+      persist({ currency: next });
+      setCurrencyState(next);
+    },
+    [persist],
+  );
+
   const resetSample = useCallback(() => {
     const locale = snapshotRef.current?.locale ?? DEFAULT_LOCALE;
+    const currency = snapshotRef.current?.currency ?? DEFAULT_CURRENCY;
     const snapshot: Snapshot = {
       records: SAMPLE_RECORDS,
       categories: DEFAULT_CATEGORIES,
@@ -284,10 +320,11 @@ export function usePnlStore() {
       chartSignColors: { ...DEFAULT_CHART_SIGN_COLORS },
       calendarPnlSize: DEFAULT_CALENDAR_PNL_SIZE,
       locale,
+      currency,
     };
     snapshotRef.current = snapshot;
     writeSnapshot(snapshot);
-    window.localStorage.setItem(STORAGE_SEED, "1");
+    markSampleSeeds();
     setRecords(snapshot.records);
     setCategoriesState(snapshot.categories);
     setColorRulesState(snapshot.colorRules);
@@ -296,6 +333,7 @@ export function usePnlStore() {
     setChartSignColorsState(snapshot.chartSignColors);
     setCalendarPnlSizeState(snapshot.calendarPnlSize);
     setLocaleState(locale);
+    setCurrencyState(currency);
   }, []);
 
   const clearInputs = useCallback(() => {
@@ -316,6 +354,7 @@ export function usePnlStore() {
       chartSignColors: payload.settings.chartSignColors,
       calendarPnlSize: payload.settings.calendarPnlSize,
       locale: payload.settings.locale ?? snapshotRef.current?.locale ?? DEFAULT_LOCALE,
+      currency: payload.settings.currency ?? snapshotRef.current?.currency ?? DEFAULT_CURRENCY,
     };
     snapshotRef.current = snapshot;
     writeSnapshot(snapshot);
@@ -327,6 +366,7 @@ export function usePnlStore() {
     setChartSignColorsState(snapshot.chartSignColors);
     setCalendarPnlSizeState(snapshot.calendarPnlSize);
     setLocaleState(snapshot.locale);
+    setCurrencyState(snapshot.currency);
   }, []);
 
   return {
@@ -338,6 +378,7 @@ export function usePnlStore() {
     chartSignColors,
     calendarPnlSize,
     locale,
+    currency,
     hydrated,
     upsert,
     remove,
@@ -348,6 +389,7 @@ export function usePnlStore() {
     setChartSignColors,
     setCalendarPnlSize,
     setLocale,
+    setCurrency,
     resetSample,
     clearInputs,
     applyBackup,

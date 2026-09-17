@@ -5,7 +5,8 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { DEFAULT_CATEGORIES, DEFAULT_CHART_SIGN_COLORS, DEFAULT_COLOR_RULES, DEFAULT_TAG_BACKGROUND, DEFAULT_TAG_COLOR, toColorInput } from "@/lib/colors";
 import { BACKUP_FILENAME, downloadBackup, newCategoryId, parseBackup, type BackupPayload } from "@/lib/backup";
 import { t } from "@/lib/i18n";
-import type { CalendarPnlSize, CategoryOption, ChartSignColors, ColorRule, Locale } from "@/types/trade";
+import { CURRENCIES } from "@/lib/pnl";
+import type { CategoryOption, ChartSignColors, ColorRule, Currency, Locale } from "@/types/trade";
 
 type Props = {
   locale: Locale;
@@ -15,13 +16,13 @@ type Props = {
   baseCarryover: number;
   monthCarryovers: Record<string, number>;
   chartSignColors: ChartSignColors;
-  calendarPnlSize: CalendarPnlSize;
+  currency: Currency;
   onChangeLocale: (locale: Locale) => void;
+  onChangeCurrency: (currency: Currency) => void;
   onChangeCategories: (categories: CategoryOption[]) => void;
   onChangeRules: (rules: ColorRule[]) => void;
   onChangeBaseCarryover: (value: number) => void;
   onChangeChartSignColors: (colors: ChartSignColors) => void;
-  onChangeCalendarPnlSize: (size: CalendarPnlSize) => void;
   onResetSample: () => void;
   onClearInputs: () => void;
   onExportBackup: () => BackupPayload;
@@ -36,13 +37,13 @@ export function SettingsView({
   baseCarryover,
   monthCarryovers,
   chartSignColors,
-  calendarPnlSize,
+  currency,
   onChangeLocale,
+  onChangeCurrency,
   onChangeCategories,
   onChangeRules,
   onChangeBaseCarryover,
   onChangeChartSignColors,
-  onChangeCalendarPnlSize,
   onResetSample,
   onClearInputs,
   onExportBackup,
@@ -323,31 +324,6 @@ export function SettingsView({
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-2 text-lg font-medium text-slate-800">{t(locale, "calendarSizeTitle")}</h2>
-        <p className="mb-3 text-sm text-slate-500">{t(locale, "calendarSizeHelp")}</p>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              { id: "s", labelKey: "sizeS" },
-              { id: "m", labelKey: "sizeM" },
-              { id: "l", labelKey: "sizeL" },
-            ] as const
-          ).map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => onChangeCalendarPnlSize(option.id)}
-              className={`rounded-md px-3 py-1.5 text-sm ${
-                calendarPnlSize === option.id ? "bg-slate-800 text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              {t(locale, option.labelKey)}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="mb-2 text-lg font-medium text-slate-800">{t(locale, "backupTitle")}</h2>
         <p className="mb-3 text-sm text-slate-500">{t(locale, "backupHelp")}</p>
         <div className="flex flex-wrap gap-2">
@@ -407,6 +383,24 @@ export function SettingsView({
           >
             {t(locale, "clearInputs")}
           </button>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-2 text-lg font-medium text-slate-800">{t(locale, "currencyTitle")}</h2>
+        <div className="flex flex-wrap gap-2">
+          {CURRENCIES.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onChangeCurrency(option)}
+              className={`rounded-md px-3 py-1.5 text-sm ${
+                currency === option ? "bg-slate-800 text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {option}
+            </button>
+          ))}
         </div>
       </section>
 

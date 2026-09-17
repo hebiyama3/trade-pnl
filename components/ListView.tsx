@@ -5,11 +5,12 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { CategoryTags } from "@/components/CategoryTag";
 import { pnlStyle } from "@/lib/colors";
 import { formatMonthLabel, t } from "@/lib/i18n";
-import { formatSigned } from "@/lib/pnl";
-import type { CategoryOption, ColorRule, Locale, MonthBlock } from "@/types/trade";
+import { formatMoney } from "@/lib/pnl";
+import type { CategoryOption, ColorRule, Currency, Locale, MonthBlock } from "@/types/trade";
 
 type Props = {
   locale: Locale;
+  currency: Currency;
   blocks: MonthBlock[];
   selectedDate: string;
   colorRules: ColorRule[];
@@ -17,7 +18,7 @@ type Props = {
   onSelectDate: (date: string) => void;
 };
 
-export function ListView({ locale, blocks, selectedDate, colorRules, categories, onSelectDate }: Props) {
+export function ListView({ locale, currency, blocks, selectedDate, colorRules, categories, onSelectDate }: Props) {
   const selectedKey = selectedDate.slice(0, 7);
   const [openKeys, setOpenKeys] = useState<string[]>([selectedKey]);
 
@@ -49,11 +50,11 @@ export function ListView({ locale, blocks, selectedDate, colorRules, categories,
                 {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 {formatMonthLabel(locale, block.year, block.month)}
                 <span className="text-xs font-normal text-slate-500">
-                  {t(locale, "carryover")} {formatSigned(block.carryover)}
+                  {t(locale, "carryover")} {formatMoney(block.carryover, currency)}
                 </span>
               </span>
               <span className="rounded px-2 py-1 text-sm" style={pnlStyle(block.total, colorRules)}>
-                {formatSigned(block.total)}
+                {formatMoney(block.total, currency)}
               </span>
             </button>
             {open ? (
@@ -74,25 +75,25 @@ export function ListView({ locale, blocks, selectedDate, colorRules, categories,
                       <tr
                         key={row.date}
                         onClick={() => onSelectDate(row.date)}
-                        className={`cursor-pointer ${selectedDate === row.date ? "ring-2 ring-inset ring-sky-400" : ""}`}
+                        className={`cursor-pointer ${selectedDate === row.date ? "ring-2 ring-inset ring-slate-800" : ""}`}
                       >
                         <td className="border-t border-slate-100 px-3 py-2 text-center text-slate-600">{row.day}</td>
                         <td className="border-t border-slate-100 px-3 py-2" style={pnlStyle(row.profitLoss, colorRules)}>
-                          {row.profitLoss === null ? "" : formatSigned(row.profitLoss)}
+                          {row.profitLoss === null ? "" : formatMoney(row.profitLoss, currency)}
                         </td>
                         <td
                           className={`border-t border-slate-100 bg-white px-3 py-2 ${
                             row.monthlyCumulative > 0 ? "text-sky-700" : row.monthlyCumulative < 0 ? "text-rose-600" : "text-slate-700"
                           }`}
                         >
-                          {formatSigned(row.monthlyCumulative)}
+                          {formatMoney(row.monthlyCumulative, currency)}
                         </td>
                         <td
                           className={`border-t border-slate-100 bg-white px-3 py-2 ${
                             row.cumulative > 0 ? "text-sky-700" : row.cumulative < 0 ? "text-rose-600" : "text-slate-700"
                           }`}
                         >
-                          {formatSigned(row.cumulative)}
+                          {formatMoney(row.cumulative, currency)}
                         </td>
                         <td className="border-t border-slate-100 px-3 py-2 text-right">
                           <CategoryTags names={row.categories} categories={categories} className="justify-end" />

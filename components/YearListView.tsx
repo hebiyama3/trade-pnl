@@ -3,31 +3,31 @@
 import { useMemo } from "react";
 import { pnlStyle } from "@/lib/colors";
 import { t } from "@/lib/i18n";
-import { buildYearColumns, formatSigned, toDateKey } from "@/lib/pnl";
-import type { ColorRule, DailyPnl, Locale, YearColumn } from "@/types/trade";
+import { buildYearColumns, formatMoney, toDateKey } from "@/lib/pnl";
+import type { ColorRule, Currency, DailyPnl, Locale, YearColumn } from "@/types/trade";
 
 const CELL = "border border-[#b8bfc9]";
 const STICKY = "sticky left-0 z-10 w-[4.6rem] min-w-[4.6rem] max-w-[4.6rem]";
-const BASE_DIGITS = formatSigned(-999999).length;
 
 function signedText(value: number) {
   return value > 0 ? "text-sky-700" : value < 0 ? "text-rose-600" : "text-slate-700";
 }
 
-function columnWidthCh(column: YearColumn, monthCarryovers: Record<string, number>): number {
-  const texts = [formatSigned(column.total), formatSigned(column.equity)];
+function columnWidthCh(column: YearColumn, monthCarryovers: Record<string, number>, currency: Currency): number {
+  const texts = [formatMoney(column.total, currency), formatMoney(column.equity, currency)];
   for (const value of column.values) {
-    if (value !== null) texts.push(formatSigned(value));
+    if (value !== null) texts.push(formatMoney(value, currency));
   }
   if (Object.prototype.hasOwnProperty.call(monthCarryovers, column.key)) {
-    texts.push(formatSigned(monthCarryovers[column.key] ?? 0));
+    texts.push(formatMoney(monthCarryovers[column.key] ?? 0, currency));
   }
-  const widest = Math.max(BASE_DIGITS, ...texts.map((text) => text.length));
+  const widest = Math.max(formatMoney(-999999, currency).length, ...texts.map((text) => text.length));
   return widest + 1;
 }
 
 type Props = {
   locale: Locale;
+  currency: Currency;
   records: DailyPnl[];
   colorRules: ColorRule[];
   monthCarryovers: Record<string, number>;
@@ -39,6 +39,7 @@ type Props = {
 
 export function YearListView({
   locale,
+  currency,
   records,
   colorRules,
   monthCarryovers,
@@ -51,7 +52,7 @@ export function YearListView({
     () => buildYearColumns(records, monthCarryovers, baseCarryover),
     [records, monthCarryovers, baseCarryover],
   );
-  const widths = columns.map((column) => columnWidthCh(column, monthCarryovers));
+  const widths = columns.map((column) => columnWidthCh(column, monthCarryovers, currency));
   const sticky = locale === "en" ? "sticky left-0 z-10 w-[6.6rem] min-w-[6.6rem] max-w-[6.6rem]" : STICKY;
   const tableWidth = `calc(${locale === "en" ? "6.6rem" : "4.6rem"} + ${widths.reduce((sum, width) => sum + width, 0)}ch)`;
 
@@ -99,11 +100,11 @@ export function YearListView({
                         if (!invalid) onSelectDate(date);
                       }}
                       className={`whitespace-nowrap py-1 pl-[1ch] pr-0.5 ${CELL} ${invalid ? "bg-slate-50" : "cursor-pointer"} ${
-                        selectedDate === date ? "outline outline-2 outline-offset-[-2px] outline-sky-500" : ""
+                        selectedDate === date ? "outline outline-2 outline-offset-[-2px] outline-slate-800" : ""
                       }`}
                       style={invalid || value === null ? undefined : pnlStyle(value, colorRules)}
                     >
-                      {invalid || value === null ? "" : formatSigned(value)}
+                      {invalid || value === null ? "" : formatMoney(value, currency)}
                     </td>
                   );
                 })}
@@ -115,7 +116,7 @@ export function YearListView({
               <td className={`${sticky} bg-white px-1 py-2 font-medium text-slate-700 ${CELL}`}>{t(locale, "monthTotal")}</td>
               {columns.map((column) => (
                 <td key={`${column.key}-total`} className={`whitespace-nowrap bg-white py-2 pl-[1ch] pr-0.5 font-medium ${CELL} ${signedText(column.total)}`}>
-                  {formatSigned(column.total)}
+                  {formatMoney(column.total, currency)}
                 </td>
               ))}
             </tr>
@@ -123,7 +124,7 @@ export function YearListView({
               <td className={`${sticky} bg-white px-1 py-2 font-medium text-slate-700 ${CELL}`}>{t(locale, "cumulativePnl")}</td>
               {columns.map((column) => (
                 <td key={`${column.key}-equity`} className={`whitespace-nowrap bg-white py-2 pl-[1ch] pr-0.5 font-medium ${CELL} ${signedText(column.equity)}`}>
-                  {formatSigned(column.equity)}
+                  {formatMoney(column.equity, currency)}
                 </td>
               ))}
             </tr>
@@ -134,7 +135,7 @@ export function YearListView({
                   <input
                     type="number"
                     value={Object.prototype.hasOwnProperty.call(monthCarryovers, column.key) ? monthCarryovers[column.key] : ""}
-                    placeholder={formatSigned(column.equity)}
+                    placeholder={formatMoney(column.equity, currency)}
                     onChange={(event) => {
                       const raw = event.target.value.trim();
                       if (raw === "") {

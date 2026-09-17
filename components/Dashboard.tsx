@@ -12,6 +12,7 @@ import { formatMonthLabel, t } from "@/lib/i18n";
 import {
   buildCalendarCells,
   buildRecordedMonthBlocks,
+  monthPnlTotal,
   parseDateKey,
   shiftMonth,
   toDateKey,
@@ -31,6 +32,7 @@ const TABS: { id: ViewMode; icon: typeof List; labelKey: "tabList" | "tabChart" 
 export function Dashboard() {
   const store = usePnlStore();
   const locale = store.locale;
+  const currency = store.currency;
   const [year, setYear] = useState(2026);
   const [month, setMonth] = useState(9);
   const [view, setView] = useState<ViewMode>("list");
@@ -111,6 +113,7 @@ export function Dashboard() {
       ) : view === "list" ? (
         <ListView
           locale={locale}
+          currency={currency}
           blocks={blocks}
           selectedDate={selectedDate}
           colorRules={store.colorRules}
@@ -118,16 +121,29 @@ export function Dashboard() {
           onSelectDate={selectDate}
         />
       ) : view === "chart" ? (
-        <ChartView locale={locale} records={store.records} year={year} month={month} chartSignColors={store.chartSignColors} />
+        <ChartView
+          locale={locale}
+          currency={currency}
+          records={store.records}
+          year={year}
+          month={month}
+          chartSignColors={store.chartSignColors}
+          onPrev={() => goMonth(-1)}
+          onNext={() => goMonth(1)}
+          onToday={goToday}
+        />
       ) : view === "calendar" ? (
         <CalendarView
           locale={locale}
+          currency={currency}
           title={formatMonthLabel(locale, year, month)}
+          monthTotal={monthPnlTotal(store.records, year, month)}
           cells={cells}
           selectedDate={selectedDate}
           colorRules={store.colorRules}
           categories={store.categories}
           pnlSize={store.calendarPnlSize}
+          onChangePnlSize={store.setCalendarPnlSize}
           onPrev={() => goMonth(-1)}
           onNext={() => goMonth(1)}
           onToday={goToday}
@@ -136,6 +152,7 @@ export function Dashboard() {
       ) : view === "year" ? (
         <YearListView
           locale={locale}
+          currency={currency}
           records={store.records}
           colorRules={store.colorRules}
           monthCarryovers={store.monthCarryovers}
@@ -147,19 +164,19 @@ export function Dashboard() {
       ) : (
         <SettingsView
           locale={locale}
+          currency={currency}
           recordsCount={store.records.length}
           categories={store.categories}
           colorRules={store.colorRules}
           baseCarryover={store.baseCarryover}
           monthCarryovers={store.monthCarryovers}
           chartSignColors={store.chartSignColors}
-          calendarPnlSize={store.calendarPnlSize}
           onChangeLocale={store.setLocale}
+          onChangeCurrency={store.setCurrency}
           onChangeCategories={store.setCategories}
           onChangeRules={store.setColorRules}
           onChangeBaseCarryover={store.setBaseCarryover}
           onChangeChartSignColors={store.setChartSignColors}
-          onChangeCalendarPnlSize={store.setCalendarPnlSize}
           onResetSample={store.resetSample}
           onClearInputs={store.clearInputs}
           onExportBackup={() =>
@@ -172,6 +189,7 @@ export function Dashboard() {
               chartSignColors: store.chartSignColors,
               calendarPnlSize: store.calendarPnlSize,
               locale: store.locale,
+              currency: store.currency,
             })
           }
           onImportBackup={store.applyBackup}

@@ -1,6 +1,6 @@
 import { DEFAULT_CHART_SIGN_COLORS, DEFAULT_CALENDAR_PNL_SIZE, DEFAULT_TAG_BACKGROUND, DEFAULT_TAG_COLOR, normalizeCalendarPnlSize, toColorInput } from "@/lib/colors";
-import { normalizeCategoryList } from "@/lib/pnl";
-import type { CalendarPnlSize, CategoryOption, ChartSignColors, ColorRule, DailyPnl, Locale } from "@/types/trade";
+import { DEFAULT_CURRENCY, normalizeCategoryList, normalizeCurrency } from "@/lib/pnl";
+import type { CalendarPnlSize, CategoryOption, ChartSignColors, ColorRule, Currency, DailyPnl, Locale } from "@/types/trade";
 import { DEFAULT_LOCALE, normalizeLocale } from "@/lib/i18n";
 
 export const BACKUP_FILENAME = "trade_pnl_backup.json";
@@ -17,6 +17,7 @@ export type BackupPayload = {
     chartSignColors: ChartSignColors;
     calendarPnlSize: CalendarPnlSize;
     locale: Locale;
+    currency: Currency;
   };
 };
 
@@ -109,6 +110,7 @@ export function buildBackup(input: {
   chartSignColors: ChartSignColors;
   calendarPnlSize: CalendarPnlSize;
   locale: Locale;
+  currency: Currency;
 }): BackupPayload {
   return {
     version: 1,
@@ -122,6 +124,7 @@ export function buildBackup(input: {
       chartSignColors: input.chartSignColors,
       calendarPnlSize: input.calendarPnlSize,
       locale: input.locale,
+      currency: input.currency,
     },
   };
 }
@@ -161,6 +164,7 @@ export function parseBackup(raw: unknown): BackupPayload | null {
       chartSignColors: normalizeChartSignColors(settings.chartSignColors),
       calendarPnlSize: normalizeCalendarPnlSize(settings.calendarPnlSize),
       locale: normalizeLocale(settings.locale ?? DEFAULT_LOCALE),
+      currency: normalizeCurrency(settings.currency ?? DEFAULT_CURRENCY),
     },
   };
 }
