@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { pnlStyle } from "@/lib/colors";
 import { t } from "@/lib/i18n";
 import { buildYearColumns, formatMoney, toDateKey } from "@/lib/pnl";
 import type { ColorRule, Currency, DailyPnl, Locale, YearColumn } from "@/types/trade";
 
 const CELL = "border border-[#b8bfc9]";
-const STICKY = "sticky left-0 z-10 w-[4.6rem] min-w-[4.6rem] max-w-[4.6rem]";
+const STICKY_LINE = "shadow-[2px_0_0_0_#64748b]";
+const STICKY = `sticky left-0 z-10 w-[4.6rem] min-w-[4.6rem] max-w-[4.6rem] ${STICKY_LINE}`;
 
 function signedText(value: number) {
   return value > 0 ? "text-sky-700" : value < 0 ? "text-rose-600" : "text-slate-700";
@@ -53,8 +54,20 @@ export function YearListView({
     [records, monthCarryovers, baseCarryover],
   );
   const widths = columns.map((column) => columnWidthCh(column, monthCarryovers, currency));
-  const sticky = locale === "en" ? "sticky left-0 z-10 w-[6.6rem] min-w-[6.6rem] max-w-[6.6rem]" : STICKY;
+  const sticky = locale === "en" ? `sticky left-0 z-10 w-[6.6rem] min-w-[6.6rem] max-w-[6.6rem] ${STICKY_LINE}` : STICKY;
   const tableWidth = `calc(${locale === "en" ? "6.6rem" : "4.6rem"} + ${widths.reduce((sum, width) => sum + width, 0)}ch)`;
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const node = scrollerRef.current;
+    if (!node) return;
+    const toLatest = () => {
+      node.scrollLeft = node.scrollWidth - node.clientWidth;
+    };
+    toLatest();
+    const frame = requestAnimationFrame(toLatest);
+    return () => cancelAnimationFrame(frame);
+  }, [columns.length, tableWidth]);
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -62,7 +75,7 @@ export function YearListView({
         <h2 className="text-lg font-medium text-slate-800">{t(locale, "yearListTitle")}</h2>
         <p className="text-xs text-slate-500">{t(locale, "yearListHelp")}</p>
       </header>
-      <div className="overflow-auto">
+      <div ref={scrollerRef} className="overflow-auto">
         <table className="table-fixed border-collapse text-right text-xs" style={{ width: tableWidth }}>
           <colgroup>
             <col style={{ width: locale === "en" ? "6.6rem" : "4.6rem" }} />

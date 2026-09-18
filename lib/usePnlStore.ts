@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { DEFAULT_CALENDAR_PNL_SIZE, DEFAULT_CATEGORIES, DEFAULT_CHART_SIGN_COLORS, DEFAULT_COLOR_RULES, normalizeCalendarPnlSize } from "@/lib/colors";
+import { DEFAULT_CALENDAR_DISPLAY, DEFAULT_CALENDAR_PNL_SIZE, DEFAULT_CATEGORIES, DEFAULT_CHART_SIGN_COLORS, DEFAULT_COLOR_RULES, normalizeCalendarDisplay, normalizeCalendarPnlSize } from "@/lib/colors";
 import { DEFAULT_LOCALE, normalizeLocale } from "@/lib/i18n";
 import {
   bindRecordCategories,
@@ -13,7 +13,7 @@ import {
 } from "@/lib/backup";
 import { DEFAULT_CURRENCY, LEGACY_SETTINGS_KEYS, LEGACY_STORAGE_KEYS, STORAGE_RECORDS, STORAGE_SEED, STORAGE_SEED_JUNJUL, STORAGE_SETTINGS, normalizeCategoryList, normalizeCurrency } from "@/lib/pnl";
 import { SAMPLE_RECORDS } from "@/lib/sample";
-import type { CalendarPnlSize, CategoryOption, ChartSignColors, ColorRule, Currency, DailyPnl, Locale } from "@/types/trade";
+import type { CalendarDisplay, CalendarPnlSize, CategoryOption, ChartSignColors, ColorRule, Currency, DailyPnl, Locale } from "@/types/trade";
 
 export type StoredSettings = {
   categories: CategoryOption[];
@@ -22,6 +22,7 @@ export type StoredSettings = {
   monthCarryovers: Record<string, number>;
   chartSignColors: ChartSignColors;
   calendarPnlSize: CalendarPnlSize;
+  calendarDisplay: CalendarDisplay;
   locale: Locale;
   currency: Currency;
 };
@@ -102,6 +103,7 @@ function readSettings(): StoredSettings {
       monthCarryovers: {},
       chartSignColors: { ...DEFAULT_CHART_SIGN_COLORS },
       calendarPnlSize: DEFAULT_CALENDAR_PNL_SIZE,
+      calendarDisplay: { ...DEFAULT_CALENDAR_DISPLAY },
       locale: DEFAULT_LOCALE,
       currency: DEFAULT_CURRENCY,
     };
@@ -116,6 +118,7 @@ function readSettings(): StoredSettings {
     monthCarryovers: normalizeMonthCarryovers(parsed.monthCarryovers),
     chartSignColors: normalizeChartSignColors(parsed.chartSignColors),
     calendarPnlSize: normalizeCalendarPnlSize(parsed.calendarPnlSize),
+    calendarDisplay: normalizeCalendarDisplay(parsed.calendarDisplay),
     locale: normalizeLocale(parsed.locale),
     currency: normalizeCurrency(parsed.currency),
   };
@@ -132,6 +135,7 @@ function writeSnapshot(snapshot: Snapshot) {
       monthCarryovers: snapshot.monthCarryovers,
       chartSignColors: snapshot.chartSignColors,
       calendarPnlSize: snapshot.calendarPnlSize,
+      calendarDisplay: snapshot.calendarDisplay,
       locale: snapshot.locale,
       currency: snapshot.currency,
     }),
@@ -154,6 +158,7 @@ export function usePnlStore() {
   const [monthCarryovers, setMonthCarryoversState] = useState<Record<string, number>>({});
   const [chartSignColors, setChartSignColorsState] = useState<ChartSignColors>(DEFAULT_CHART_SIGN_COLORS);
   const [calendarPnlSize, setCalendarPnlSizeState] = useState<CalendarPnlSize>(DEFAULT_CALENDAR_PNL_SIZE);
+  const [calendarDisplay, setCalendarDisplayState] = useState<CalendarDisplay>(DEFAULT_CALENDAR_DISPLAY);
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
   const [currency, setCurrencyState] = useState<Currency>(DEFAULT_CURRENCY);
   const [hydrated, setHydrated] = useState(false);
@@ -178,6 +183,7 @@ export function usePnlStore() {
       setMonthCarryoversState(snapshot.monthCarryovers);
       setChartSignColorsState(snapshot.chartSignColors);
       setCalendarPnlSizeState(snapshot.calendarPnlSize);
+      setCalendarDisplayState(snapshot.calendarDisplay);
       setLocaleState(snapshot.locale);
       setCurrencyState(snapshot.currency);
     } catch {
@@ -189,6 +195,7 @@ export function usePnlStore() {
         monthCarryovers: {},
         chartSignColors: { ...DEFAULT_CHART_SIGN_COLORS },
         calendarPnlSize: DEFAULT_CALENDAR_PNL_SIZE,
+        calendarDisplay: { ...DEFAULT_CALENDAR_DISPLAY },
         locale: DEFAULT_LOCALE,
         currency: DEFAULT_CURRENCY,
       };
@@ -198,6 +205,7 @@ export function usePnlStore() {
       setColorRulesState(fallback.colorRules);
       setChartSignColorsState(fallback.chartSignColors);
       setCalendarPnlSizeState(fallback.calendarPnlSize);
+      setCalendarDisplayState(fallback.calendarDisplay);
       setLocaleState(fallback.locale);
       setCurrencyState(fallback.currency);
     } finally {
@@ -292,6 +300,17 @@ export function usePnlStore() {
     [persist],
   );
 
+  const setCalendarDisplay = useCallback(
+    (patch: Partial<CalendarDisplay>) => {
+      setCalendarDisplayState((current) => {
+        const next = { ...current, ...patch };
+        persist({ calendarDisplay: next });
+        return next;
+      });
+    },
+    [persist],
+  );
+
   const setLocale = useCallback(
     (next: Locale) => {
       persist({ locale: next });
@@ -311,6 +330,7 @@ export function usePnlStore() {
   const resetSample = useCallback(() => {
     const locale = snapshotRef.current?.locale ?? DEFAULT_LOCALE;
     const currency = snapshotRef.current?.currency ?? DEFAULT_CURRENCY;
+    const calendarDisplay = snapshotRef.current?.calendarDisplay ?? DEFAULT_CALENDAR_DISPLAY;
     const snapshot: Snapshot = {
       records: SAMPLE_RECORDS,
       categories: DEFAULT_CATEGORIES,
@@ -319,6 +339,7 @@ export function usePnlStore() {
       monthCarryovers: {},
       chartSignColors: { ...DEFAULT_CHART_SIGN_COLORS },
       calendarPnlSize: DEFAULT_CALENDAR_PNL_SIZE,
+      calendarDisplay,
       locale,
       currency,
     };
@@ -332,6 +353,7 @@ export function usePnlStore() {
     setMonthCarryoversState({});
     setChartSignColorsState(snapshot.chartSignColors);
     setCalendarPnlSizeState(snapshot.calendarPnlSize);
+    setCalendarDisplayState(calendarDisplay);
     setLocaleState(locale);
     setCurrencyState(currency);
   }, []);
@@ -353,6 +375,7 @@ export function usePnlStore() {
       monthCarryovers: payload.settings.monthCarryovers,
       chartSignColors: payload.settings.chartSignColors,
       calendarPnlSize: payload.settings.calendarPnlSize,
+      calendarDisplay: payload.settings.calendarDisplay ?? snapshotRef.current?.calendarDisplay ?? DEFAULT_CALENDAR_DISPLAY,
       locale: payload.settings.locale ?? snapshotRef.current?.locale ?? DEFAULT_LOCALE,
       currency: payload.settings.currency ?? snapshotRef.current?.currency ?? DEFAULT_CURRENCY,
     };
@@ -365,6 +388,7 @@ export function usePnlStore() {
     setMonthCarryoversState(snapshot.monthCarryovers);
     setChartSignColorsState(snapshot.chartSignColors);
     setCalendarPnlSizeState(snapshot.calendarPnlSize);
+    setCalendarDisplayState(snapshot.calendarDisplay);
     setLocaleState(snapshot.locale);
     setCurrencyState(snapshot.currency);
   }, []);
@@ -377,6 +401,7 @@ export function usePnlStore() {
     monthCarryovers,
     chartSignColors,
     calendarPnlSize,
+    calendarDisplay,
     locale,
     currency,
     hydrated,
@@ -388,6 +413,7 @@ export function usePnlStore() {
     setMonthCarryover,
     setChartSignColors,
     setCalendarPnlSize,
+    setCalendarDisplay,
     setLocale,
     setCurrency,
     resetSample,

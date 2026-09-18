@@ -29,14 +29,23 @@ const TABS: { id: ViewMode; icon: typeof List; labelKey: "tabList" | "tabChart" 
   { id: "settings", labelKey: "tabSettings", icon: Settings },
 ];
 
+function todayStamp() {
+  const now = new Date();
+  return {
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+    date: toDateKey(now.getFullYear(), now.getMonth() + 1, now.getDate()),
+  };
+}
+
 export function Dashboard() {
   const store = usePnlStore();
   const locale = store.locale;
   const currency = store.currency;
-  const [year, setYear] = useState(2026);
-  const [month, setMonth] = useState(9);
+  const [year, setYear] = useState(() => todayStamp().year);
+  const [month, setMonth] = useState(() => todayStamp().month);
   const [view, setView] = useState<ViewMode>("list");
-  const [selectedDate, setSelectedDate] = useState("2026-09-04");
+  const [selectedDate, setSelectedDate] = useState(() => todayStamp().date);
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -64,8 +73,7 @@ export function Dashboard() {
   };
 
   const goToday = () => {
-    const now = new Date();
-    selectDate(toDateKey(now.getFullYear(), now.getMonth() + 1, now.getDate()));
+    selectDate(todayStamp().date);
   };
 
   return (
@@ -143,7 +151,9 @@ export function Dashboard() {
           colorRules={store.colorRules}
           categories={store.categories}
           pnlSize={store.calendarPnlSize}
+          display={store.calendarDisplay}
           onChangePnlSize={store.setCalendarPnlSize}
+          onChangeDisplay={store.setCalendarDisplay}
           onPrev={() => goMonth(-1)}
           onNext={() => goMonth(1)}
           onToday={goToday}
@@ -188,6 +198,7 @@ export function Dashboard() {
               monthCarryovers: store.monthCarryovers,
               chartSignColors: store.chartSignColors,
               calendarPnlSize: store.calendarPnlSize,
+              calendarDisplay: store.calendarDisplay,
               locale: store.locale,
               currency: store.currency,
             })

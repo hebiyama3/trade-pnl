@@ -6,7 +6,7 @@ import { CategoryTags } from "@/components/CategoryTag";
 import { calendarPnlSizeClass, pnlStyle } from "@/lib/colors";
 import { t, WEEKDAY_KEYS } from "@/lib/i18n";
 import { formatMoney } from "@/lib/pnl";
-import type { CalendarCell, CalendarPnlSize, CategoryOption, ColorRule, Currency, Locale } from "@/types/trade";
+import type { CalendarCell, CalendarDisplay, CalendarPnlSize, CategoryOption, ColorRule, Currency, Locale } from "@/types/trade";
 
 type Props = {
   locale: Locale;
@@ -18,7 +18,9 @@ type Props = {
   colorRules: ColorRule[];
   categories: CategoryOption[];
   pnlSize: CalendarPnlSize;
+  display: CalendarDisplay;
   onChangePnlSize: (size: CalendarPnlSize) => void;
+  onChangeDisplay: (patch: Partial<CalendarDisplay>) => void;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -35,17 +37,15 @@ export function CalendarView({
   colorRules,
   categories,
   pnlSize,
+  display,
   onChangePnlSize,
+  onChangeDisplay,
   onPrev,
   onNext,
   onToday,
   onSelectDate,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showCategories, setShowCategories] = useState(true);
-  const [showMemos, setShowMemos] = useState(true);
-  const [showAdjacentDays, setShowAdjacentDays] = useState(false);
-  const [showMonthTotal, setShowMonthTotal] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export function CalendarView({
     return () => window.removeEventListener("mousedown", onPointer);
   }, []);
 
-  const compact = !showCategories && !showMemos;
+  const compact = !display.showCategories && !display.showMemos;
   const menuToggleClass = (active: boolean) =>
     `flex-1 rounded-md px-2 py-1 text-sm ${
       active ? "bg-slate-800 text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -82,17 +82,17 @@ export function CalendarView({
                   <div className="mb-1 flex gap-1">
                     <button
                       type="button"
-                      aria-pressed={showCategories}
-                      onClick={() => setShowCategories((current) => !current)}
-                      className={menuToggleClass(showCategories)}
+                      aria-pressed={display.showCategories}
+                      onClick={() => onChangeDisplay({ showCategories: !display.showCategories })}
+                      className={menuToggleClass(display.showCategories)}
                     >
                       {t(locale, "category")}
                     </button>
                     <button
                       type="button"
-                      aria-pressed={showMemos}
-                      onClick={() => setShowMemos((current) => !current)}
-                      className={menuToggleClass(showMemos)}
+                      aria-pressed={display.showMemos}
+                      onClick={() => onChangeDisplay({ showMemos: !display.showMemos })}
+                      className={menuToggleClass(display.showMemos)}
                     >
                       {t(locale, "memo")}
                     </button>
@@ -100,17 +100,17 @@ export function CalendarView({
                   <div className="flex gap-1">
                     <button
                       type="button"
-                      aria-pressed={showMonthTotal}
-                      onClick={() => setShowMonthTotal((current) => !current)}
-                      className={menuToggleClass(showMonthTotal)}
+                      aria-pressed={display.showMonthTotal}
+                      onClick={() => onChangeDisplay({ showMonthTotal: !display.showMonthTotal })}
+                      className={menuToggleClass(display.showMonthTotal)}
                     >
                       {t(locale, "displayTotal")}
                     </button>
                     <button
                       type="button"
-                      aria-pressed={showAdjacentDays}
-                      onClick={() => setShowAdjacentDays((current) => !current)}
-                      className={menuToggleClass(showAdjacentDays)}
+                      aria-pressed={display.showAdjacentDays}
+                      onClick={() => onChangeDisplay({ showAdjacentDays: !display.showAdjacentDays })}
+                      className={menuToggleClass(display.showAdjacentDays)}
                     >
                       {t(locale, "displayAdjacent")}
                     </button>
@@ -169,14 +169,14 @@ export function CalendarView({
       <div className="grid grid-cols-7">
         {cells.map((cell) => {
           const selected = cell.date === selectedDate;
-          const showContent = cell.inCurrentMonth || showAdjacentDays;
+          const showContent = cell.inCurrentMonth || display.showAdjacentDays;
           return (
             <button
               type="button"
               key={cell.date}
               onClick={() => onSelectDate(cell.date)}
               className={`${compact ? "min-h-[88px]" : "min-h-[118px]"} border-b border-r border-slate-100 p-2 text-left ${
-                cell.inCurrentMonth || !showAdjacentDays ? "bg-white" : "bg-slate-50"
+                cell.inCurrentMonth || !display.showAdjacentDays ? "bg-white" : "bg-slate-50"
               } ${selected ? "ring-2 ring-inset ring-slate-800" : ""}`}
             >
               {showContent ? (
@@ -190,12 +190,12 @@ export function CalendarView({
                   >
                     {cell.profitLoss === null ? "—" : formatMoney(cell.profitLoss, currency)}
                   </div>
-                  {showCategories ? (
+                  {display.showCategories ? (
                     <div className="mb-1 flex flex-wrap gap-1">
                       {cell.categories.length ? <CategoryTags names={cell.categories} categories={categories} /> : "\u00A0"}
                     </div>
                   ) : null}
-                  {showMemos ? (
+                  {display.showMemos ? (
                     <div className={`truncate text-[11px] ${cell.inCurrentMonth ? "text-slate-500" : "text-slate-400"}`}>
                       {cell.memo || "\u00A0"}
                     </div>
@@ -207,7 +207,7 @@ export function CalendarView({
         })}
       </div>
 
-      {showMonthTotal ? (
+      {display.showMonthTotal ? (
         <footer className="flex items-center justify-center border-t border-slate-100 bg-white px-4 py-4">
           <span
             className={`text-2xl font-medium ${

@@ -1,6 +1,6 @@
-import { DEFAULT_CHART_SIGN_COLORS, DEFAULT_CALENDAR_PNL_SIZE, DEFAULT_TAG_BACKGROUND, DEFAULT_TAG_COLOR, normalizeCalendarPnlSize, toColorInput } from "@/lib/colors";
+import { DEFAULT_CHART_SIGN_COLORS, DEFAULT_CALENDAR_PNL_SIZE, DEFAULT_TAG_BACKGROUND, DEFAULT_TAG_COLOR, normalizeCalendarDisplay, normalizeCalendarPnlSize, toColorInput } from "@/lib/colors";
 import { DEFAULT_CURRENCY, normalizeCategoryList, normalizeCurrency } from "@/lib/pnl";
-import type { CalendarPnlSize, CategoryOption, ChartSignColors, ColorRule, Currency, DailyPnl, Locale } from "@/types/trade";
+import type { CalendarDisplay, CalendarPnlSize, CategoryOption, ChartSignColors, ColorRule, Currency, DailyPnl, Locale } from "@/types/trade";
 import { DEFAULT_LOCALE, normalizeLocale } from "@/lib/i18n";
 
 export const BACKUP_FILENAME = "trade_pnl_backup.json";
@@ -16,6 +16,7 @@ export type BackupPayload = {
     monthCarryovers: Record<string, number>;
     chartSignColors: ChartSignColors;
     calendarPnlSize: CalendarPnlSize;
+    calendarDisplay: CalendarDisplay;
     locale: Locale;
     currency: Currency;
   };
@@ -109,6 +110,7 @@ export function buildBackup(input: {
   monthCarryovers: Record<string, number>;
   chartSignColors: ChartSignColors;
   calendarPnlSize: CalendarPnlSize;
+  calendarDisplay: CalendarDisplay;
   locale: Locale;
   currency: Currency;
 }): BackupPayload {
@@ -123,6 +125,7 @@ export function buildBackup(input: {
       monthCarryovers: input.monthCarryovers,
       chartSignColors: input.chartSignColors,
       calendarPnlSize: input.calendarPnlSize,
+      calendarDisplay: input.calendarDisplay,
       locale: input.locale,
       currency: input.currency,
     },
@@ -163,6 +166,7 @@ export function parseBackup(raw: unknown): BackupPayload | null {
       monthCarryovers: normalizeMonthCarryovers(settings.monthCarryovers),
       chartSignColors: normalizeChartSignColors(settings.chartSignColors),
       calendarPnlSize: normalizeCalendarPnlSize(settings.calendarPnlSize),
+      calendarDisplay: normalizeCalendarDisplay(settings.calendarDisplay),
       locale: normalizeLocale(settings.locale ?? DEFAULT_LOCALE),
       currency: normalizeCurrency(settings.currency ?? DEFAULT_CURRENCY),
     },

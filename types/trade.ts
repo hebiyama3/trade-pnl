@@ -21,6 +21,13 @@ export type ChartSignColors = {
 
 export type CalendarPnlSize = "s" | "m" | "l";
 
+export type CalendarDisplay = {
+  showCategories: boolean;
+  showMemos: boolean;
+  showAdjacentDays: boolean;
+  showMonthTotal: boolean;
+};
+
 export type Locale = "ja" | "en";
 
 export type Currency = "¥" | "$" | "€";

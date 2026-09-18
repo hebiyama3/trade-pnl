@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { CategoryOption, CalendarPnlSize, ChartSignColors, ColorRule } from "@/types/trade";
+import type { CategoryOption, CalendarDisplay, CalendarPnlSize, ChartSignColors, ColorRule } from "@/types/trade";
 
 export const DEFAULT_TAG_COLOR = "#000000";
 export const DEFAULT_TAG_BACKGROUND = "#e5e7eb";
@@ -12,6 +12,13 @@ export const DEFAULT_CHART_SIGN_COLORS: ChartSignColors = {
 
 export const DEFAULT_CALENDAR_PNL_SIZE: CalendarPnlSize = "s";
 
+export const DEFAULT_CALENDAR_DISPLAY: CalendarDisplay = {
+  showCategories: true,
+  showMemos: true,
+  showAdjacentDays: false,
+  showMonthTotal: true,
+};
+
 export function calendarPnlSizeClass(size: CalendarPnlSize): string {
   if (size === "l") return "text-base";
   if (size === "m") return "text-sm";
@@ -20,6 +27,16 @@ export function calendarPnlSizeClass(size: CalendarPnlSize): string {
 
 export function normalizeCalendarPnlSize(value: unknown): CalendarPnlSize {
   return value === "s" || value === "m" || value === "l" ? value : DEFAULT_CALENDAR_PNL_SIZE;
+}
+
+export function normalizeCalendarDisplay(value: unknown): CalendarDisplay {
+  const parsed = value && typeof value === "object" ? (value as Partial<CalendarDisplay>) : {};
+  return {
+    showCategories: typeof parsed.showCategories === "boolean" ? parsed.showCategories : DEFAULT_CALENDAR_DISPLAY.showCategories,
+    showMemos: typeof parsed.showMemos === "boolean" ? parsed.showMemos : DEFAULT_CALENDAR_DISPLAY.showMemos,
+    showAdjacentDays: typeof parsed.showAdjacentDays === "boolean" ? parsed.showAdjacentDays : DEFAULT_CALENDAR_DISPLAY.showAdjacentDays,
+    showMonthTotal: typeof parsed.showMonthTotal === "boolean" ? parsed.showMonthTotal : DEFAULT_CALENDAR_DISPLAY.showMonthTotal,
+  };
 }
 
 export const DEFAULT_CATEGORIES: CategoryOption[] = [
