@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { BarChart3, CalendarDays, List, Settings, Table2 } from "lucide-react";
 import { CalendarView } from "@/components/CalendarView";
 import { ChartView } from "@/components/ChartView";
@@ -18,13 +19,14 @@ import {
   toDateKey,
 } from "@/lib/pnl";
 import { usePnlStore } from "@/lib/usePnlStore";
+import { VIEW_PATHS, viewFromPath } from "@/lib/views";
 import { buildBackup } from "@/lib/backup";
 import type { ViewMode } from "@/types/trade";
 
 const TABS: { id: ViewMode; icon: typeof List; labelKey: "tabList" | "tabChart" | "tabCalendar" | "tabYear" | "tabSettings" }[] = [
+  { id: "calendar", labelKey: "tabCalendar", icon: CalendarDays },
   { id: "list", labelKey: "tabList", icon: List },
   { id: "chart", labelKey: "tabChart", icon: BarChart3 },
-  { id: "calendar", labelKey: "tabCalendar", icon: CalendarDays },
   { id: "year", labelKey: "tabYear", icon: Table2 },
   { id: "settings", labelKey: "tabSettings", icon: Settings },
 ];
@@ -42,9 +44,11 @@ export function Dashboard() {
   const store = usePnlStore();
   const locale = store.locale;
   const currency = store.currency;
+  const pathname = usePathname();
+  const router = useRouter();
+  const view = viewFromPath(pathname);
   const [year, setYear] = useState(() => todayStamp().year);
   const [month, setMonth] = useState(() => todayStamp().month);
-  const [view, setView] = useState<ViewMode>("list");
   const [selectedDate, setSelectedDate] = useState(() => todayStamp().date);
 
   useEffect(() => {
@@ -89,7 +93,7 @@ export function Dashboard() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setView(tab.id)}
+                onClick={() => router.push(VIEW_PATHS[tab.id])}
                 className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
                   active ? "bg-slate-800 text-white" : "text-slate-600 hover:bg-slate-50"
                 }`}

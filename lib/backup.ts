@@ -1,5 +1,5 @@
 import { DEFAULT_CHART_SIGN_COLORS, DEFAULT_CALENDAR_PNL_SIZE, DEFAULT_TAG_BACKGROUND, DEFAULT_TAG_COLOR, normalizeCalendarDisplay, normalizeCalendarPnlSize, toColorInput } from "@/lib/colors";
-import { DEFAULT_CURRENCY, normalizeCategoryList, normalizeCurrency } from "@/lib/pnl";
+import { DEFAULT_CURRENCY, normalizeCurrency, normalizeDailyPnl } from "@/lib/pnl";
 import type { CalendarDisplay, CalendarPnlSize, CategoryOption, ChartSignColors, ColorRule, Currency, DailyPnl, Locale } from "@/types/trade";
 import { DEFAULT_LOCALE, normalizeLocale } from "@/lib/i18n";
 
@@ -136,19 +136,7 @@ export function parseBackup(raw: unknown): BackupPayload | null {
   if (!raw || typeof raw !== "object") return null;
   const data = raw as Partial<BackupPayload> & { records?: unknown; settings?: Partial<BackupPayload["settings"]> };
   if (!Array.isArray(data.records)) return null;
-  const records = data.records
-    .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const record = item as Partial<DailyPnl> & { category?: unknown };
-      if (typeof record.date !== "string" || typeof record.profitLoss !== "number") return null;
-      return {
-        date: record.date,
-        profitLoss: record.profitLoss,
-        memo: typeof record.memo === "string" ? record.memo : "",
-        categories: normalizeCategoryList(record.categories ?? record.category),
-      } satisfies DailyPnl;
-    })
-    .filter((item): item is DailyPnl => item !== null);
+  const records = data.records.map(normalizeDailyPnl).filter((item): item is DailyPnl => item !== null);
 
   const settings: Partial<BackupPayload["settings"]> = data.settings ?? {};
   const categories = normalizeCategories(settings.categories);

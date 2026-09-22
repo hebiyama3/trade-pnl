@@ -2,7 +2,7 @@ export type ViewMode = "list" | "chart" | "calendar" | "year" | "settings";
 
 export type DailyPnl = {
   date: string;
-  profitLoss: number;
+  profitLoss: number | null;
   memo: string;
   categories: string[];
 };

@@ -11,7 +11,7 @@ import {
   normalizeMonthCarryovers,
   type BackupPayload,
 } from "@/lib/backup";
-import { DEFAULT_CURRENCY, LEGACY_SETTINGS_KEYS, LEGACY_STORAGE_KEYS, STORAGE_RECORDS, STORAGE_SEED, STORAGE_SEED_JUNJUL, STORAGE_SETTINGS, normalizeCategoryList, normalizeCurrency } from "@/lib/pnl";
+import { DEFAULT_CURRENCY, LEGACY_SETTINGS_KEYS, LEGACY_STORAGE_KEYS, STORAGE_RECORDS, STORAGE_SEED, STORAGE_SEED_JUNJUL, STORAGE_SETTINGS, normalizeCurrency, normalizeDailyPnl } from "@/lib/pnl";
 import { SAMPLE_RECORDS } from "@/lib/sample";
 import type { CalendarDisplay, CalendarPnlSize, CategoryOption, ChartSignColors, ColorRule, Currency, DailyPnl, Locale } from "@/types/trade";
 
@@ -30,18 +30,7 @@ export type StoredSettings = {
 type Snapshot = StoredSettings & { records: DailyPnl[] };
 
 function normalizeRecord(value: unknown): DailyPnl | null {
-  if (!value || typeof value !== "object") return null;
-  const record = value as Partial<DailyPnl>;
-  if (typeof record.date !== "string" || typeof record.profitLoss !== "number") return null;
-  return {
-    date: record.date,
-    profitLoss: record.profitLoss,
-    memo: typeof record.memo === "string" ? record.memo : "",
-    categories: normalizeCategoryList(
-      (record as { categories?: unknown; category?: unknown }).categories ??
-        (record as { category?: unknown }).category,
-    ),
-  };
+  return normalizeDailyPnl(value);
 }
 
 function applySeptemberSeed(records: DailyPnl[]): DailyPnl[] {

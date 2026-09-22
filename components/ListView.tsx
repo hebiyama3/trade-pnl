@@ -102,7 +102,11 @@ export function ListView({ locale, currency, blocks, selectedDate, colorRules, c
                             className="border-t border-slate-100 px-3 py-2"
                             style={selectedStyle(selected, "middle", pnlStyle(row.profitLoss, colorRules))}
                           >
-                            {row.profitLoss === null ? "" : formatMoney(row.profitLoss, currency)}
+                            {row.profitLoss === null
+                              ? row.memo || row.categories.length
+                                ? "—"
+                                : ""
+                              : formatMoney(row.profitLoss, currency)}
                           </td>
                           <td
                             className={`border-t border-slate-100 bg-white px-3 py-2 ${

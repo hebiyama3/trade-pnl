@@ -73,6 +73,27 @@ export function normalizeCategoryList(value: unknown): string[] {
   return [];
 }
 
+export function normalizeDailyPnl(value: unknown): DailyPnl | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Partial<DailyPnl> & { category?: unknown };
+  if (typeof record.date !== "string") return null;
+
+  let profitLoss: number | null;
+  if (record.profitLoss === null || record.profitLoss === undefined) {
+    profitLoss = null;
+  } else if (typeof record.profitLoss === "number" && Number.isFinite(record.profitLoss)) {
+    profitLoss = record.profitLoss;
+  } else {
+    return null;
+  }
+
+  const memo = typeof record.memo === "string" ? record.memo : "";
+  const categories = normalizeCategoryList(record.categories ?? record.category);
+  if (profitLoss === null && memo.trim() === "" && categories.length === 0) return null;
+
+  return { date: record.date, profitLoss, memo, categories };
+}
+
 export function recordsByDate(records: DailyPnl[]): Map<string, DailyPnl> {
   const map = new Map<string, DailyPnl>();
   for (const record of records) map.set(record.date, record);
@@ -81,7 +102,7 @@ export function recordsByDate(records: DailyPnl[]): Map<string, DailyPnl> {
 
 export function monthPnlTotal(records: DailyPnl[], year: number, month: number): number {
   const prefix = `${monthKey(year, month)}-`;
-  return records.filter((item) => item.date.startsWith(prefix)).reduce((sum, item) => sum + item.profitLoss, 0);
+  return records.filter((item) => item.date.startsWith(prefix)).reduce((sum, item) => sum + (item.profitLoss ?? 0), 0);
 }
 
 export function consecutiveMonths(
@@ -302,7 +323,7 @@ export function chartRangePoints(records: DailyPnl[], start: string, end: string
       cursor = addDays(cursor, 1);
       continue;
     }
-    const daily = record ? record.profitLoss : 0;
+    const daily = record?.profitLoss ?? 0;
     running += daily;
     points.push({
       date: cursor,

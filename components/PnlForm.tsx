@@ -39,7 +39,13 @@ export function PnlForm({
         const date = String(data.get("date") ?? "");
         const raw = String(data.get("profitLoss") ?? "").replace(/,/g, "").trim();
         const memo = String(data.get("memo") ?? "");
-        if (!date || raw === "") return;
+        const hasNotes = memo.trim() !== "" || selectedCategories.length > 0;
+        if (!date) return;
+        if (raw === "") {
+          if (!hasNotes) return;
+          onSave({ date, profitLoss: null, memo, categories: selectedCategories });
+          return;
+        }
         const profitLoss = Number(raw);
         if (Number.isNaN(profitLoss)) return;
         onSave({ date, profitLoss, memo, categories: selectedCategories });
